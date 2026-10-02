@@ -52,19 +52,77 @@ export default function App() {
   const [phone, setPhone] = useState("");
   const [relationship, setRelationship] = useState("");
   const [busy, setBusy] = useState(false);
+  const [storageReady, setStorageReady] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
     (async () => {
-      const savedContacts = await AsyncStorage.getItem(CONTACTS_KEY);
-      const savedIncident = await AsyncStorage.getItem(INCIDENT_KEY);
-      if (savedContacts) setContacts(JSON.parse(savedContacts));
-      if (savedIncident) setActiveIncident(JSON.parse(savedIncident));
+      try {
+        const [savedContacts, savedIncident] = await Promise.all([
+          AsyncStorage.getItem(CONTACTS_KEY),
+          AsyncStorage.getItem(INCIDENT_KEY),
+        ]);
+
+        if (!mounted) return;
+
+        if (savedContacts) {
+          try {
+            const parsed = JSON.parse(savedContacts);
+            if (Array.isArray(parsed)) {
+              const validContacts = parsed.filter(
+                (item): item is Contact =>
+                  item &&
+                  typeof item.id === "string" &&
+                  typeof item.name === "string" &&
+                  typeof item.phone === "string" &&
+                  typeof item.relationship === "string"
+              );
+              setContacts(validContacts);
+            }
+          } catch (error) {
+            console.error("Invalid saved contacts", error);
+            await AsyncStorage.removeItem(CONTACTS_KEY);
+          }
+        }
+
+        if (savedIncident) {
+          try {
+            const parsed = JSON.parse(savedIncident);
+            const validIncident =
+              parsed &&
+              typeof parsed.id === "string" &&
+              Number.isFinite(parsed.latitude) &&
+              Number.isFinite(parsed.longitude) &&
+              typeof parsed.startedAt === "string" &&
+              parsed.status === "ACTIVE";
+            if (validIncident) setActiveIncident(parsed);
+            else await AsyncStorage.removeItem(INCIDENT_KEY);
+          } catch (error) {
+            console.error("Invalid saved incident", error);
+            await AsyncStorage.removeItem(INCIDENT_KEY);
+          }
+        }
+      } catch (error) {
+        console.error("Storage initialization failed", error);
+        if (mounted) {
+          Alert.alert("Storage error", "Saved Safety data could not be loaded. You can continue, but local data may not be available.");
+        }
+      } finally {
+        if (mounted) setStorageReady(true);
+      }
     })();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useEffect(() => {
-    AsyncStorage.setItem(CONTACTS_KEY, JSON.stringify(contacts));
-  }, [contacts]);
+    if (!storageReady) return;
+    AsyncStorage.setItem(CONTACTS_KEY, JSON.stringify(contacts)).catch((error) => {
+      console.error("Could not save contacts", error);
+    });
+  }, [contacts, storageReady]);
 
   const locationText = useMemo(() => {
     if (!activeIncident) return "";
@@ -109,6 +167,10 @@ export default function App() {
   };
 
   const beginSOS = () => {
+    if (!storageReady) {
+      Alert.alert("Please wait", "Safety is still loading your saved data.");
+      return;
+    }
     if (activeIncident || busy || countdown !== null) return;
     if (contacts.length === 0) {
       Alert.alert("Add a trusted contact", "Please add at least one trusted contact before activating SOS.");
@@ -230,6 +292,18 @@ export default function App() {
       </TouchableOpacity>
     </View>
   );
+
+  if (!storageReady) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.loadingScreen}>
+          <Text style={styles.loadingTitle}>SAFETY</Text>
+          <Text style={styles.descriptionCenter}>Loading your emergency settings…</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (screen === "contacts") {
     return (
@@ -433,6 +507,8 @@ const styles = StyleSheet.create({
   contactName: { fontSize: 16, fontWeight: "800" },
   contactMeta: { color: "#667085", marginTop: 3 },
   removeText: { color: "#D92D20", fontWeight: "700", padding: 8 },
+  loadingScreen: { flex: 1, alignItems: "center", justifyContent: "center", padding: 30 },
+  loadingTitle: { fontSize: 28, fontWeight: "900", letterSpacing: 2, marginBottom: 12 },
   countdownScreen: { flex: 1, alignItems: "center", justifyContent: "center", padding: 30 },
   warningTitle: { fontSize: 22, fontWeight: "900", marginBottom: 10 },
   countdown: { fontSize: 120, fontWeight: "900" },
