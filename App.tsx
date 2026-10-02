@@ -19,7 +19,7 @@ import { getCountries, getCountryCallingCode } from "libphonenumber-js";
 import { isDuplicatePhone, isValidActiveIncident, isValidPhone, normalizePhone, validateCountryPhone } from "./src/safetyRules";
 import { persistAndSyncIncident, endAndSyncIncident } from "./src/sosCoordinator";
 import { initializeBackendSync, recoverBackendContacts } from "./src/appSync";
-import { getActiveIncident } from "./src/backend";
+import { getActiveIncident, getCurrentUser } from "./src/backend";
 import { mergeContacts } from "./src/contactMerge";
 
 type Contact = {
@@ -134,7 +134,8 @@ export default function App() {
           if (remoteContacts && mounted) {
             setContacts((current) => mergeContacts(current, remoteContacts));
           }
-          const remoteActive = await getActiveIncident((await import("./src/backend")).getCurrentUser().then((u) => u?.id ?? ""));
+          const currentUser = await getCurrentUser();
+          const remoteActive = currentUser?.id ? await getActiveIncident(currentUser.id) : null;
           if (remoteActive && mounted && !savedIncident) {
             const recovered: Incident = {
               id: remoteActive.client_local_id ?? remoteActive.id,
