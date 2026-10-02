@@ -86,6 +86,19 @@ export async function listContacts(userId: string) {
   return (data ?? []) as ContactRecord[];
 }
 
+export async function findIncidentByLocalId(userId: string, localId: string) {
+  const client = configuredClient();
+  const { data, error } = await client
+    .from("emergency_incidents")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("client_local_id", localId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data ?? null) as IncidentRecord | null;
+}
+
 export async function createIncident(
   userId: string,
   incident: Pick<IncidentRecord, "latitude" | "longitude" | "accuracy" | "started_at">
