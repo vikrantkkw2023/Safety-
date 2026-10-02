@@ -15,6 +15,9 @@
 - [x] End emergency
 - [x] Basic accessibility labels
 - [x] Failure messages for GPS/SMS limitations
+- [x] Country-required signup UI (local testing profile)
+- [x] Automatic country calling code
+- [x] Country-aware phone validation and E.164 normalization
 
 ## Connected backend preparation
 
@@ -26,6 +29,7 @@
 ## Not yet connected
 
 - [ ] Supabase Auth in the mobile client
+- [ ] Persist signup profile to Supabase
 - [ ] Server-side incident creation
 - [ ] Server-side trusted contacts
 - [ ] Push notification delivery
