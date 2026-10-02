@@ -164,3 +164,22 @@ export async function listProfile(userId: string) {
   if (error) throw error;
   return (data ?? null) as ProfileRecord | null;
 }
+
+
+export function isBackendError(error: unknown): boolean {
+  return Boolean(error);
+}
+
+export async function syncContactIfAuthenticated(
+  userId: string,
+  contact: Omit<ContactRecord, "id" | "user_id">
+) {
+  return createContact(userId, contact);
+}
+
+export async function syncProfileIfAuthenticated(
+  userId: string,
+  profile: Omit<ProfileRecord, "id">
+) {
+  return upsertProfile(userId, profile);
+}
