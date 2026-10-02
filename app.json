@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "Safety",
+    "slug": "safety-emergency-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Safety uses your location when you activate SOS so your trusted contacts can find you."
+      }
+    },
+    "android": {
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ],
+      "package": "com.safety.emergency"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Safety uses your location when you activate SOS so your trusted contacts can find you."
+        }
+      ]
+    ]
+  }
+}
