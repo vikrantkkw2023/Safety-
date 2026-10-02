@@ -4,6 +4,7 @@ import {
   Linking,
   SafeAreaView,
   ScrollView,
+  Modal,
   StatusBar,
   StyleSheet,
   Text,
@@ -14,7 +15,8 @@ import {
 import * as Location from "expo-location";
 import * as SMS from "expo-sms";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { isDuplicatePhone, isValidActiveIncident, isValidPhone, normalizePhone } from "./src/safetyRules";
+import { getCountries, getCountryCallingCode } from "libphonenumber-js";
+import { isDuplicatePhone, isValidActiveIncident, isValidPhone, normalizePhone, validateCountryPhone } from "./src/safetyRules";
 
 type Contact = {
   id: string;
@@ -34,6 +36,7 @@ type Incident = {
 
 const CONTACTS_KEY = "safety.contacts.v1";
 const INCIDENT_KEY = "safety.activeIncident.v1";
+const PROFILE_KEY = "safety.profile.v1";
 
 // TEST-ONLY emergency service placeholder. This is intentionally invalid and
 // must never be dialed or messaged. Replace only after the emergency workflow
@@ -48,7 +51,12 @@ export default function App() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [activeIncident, setActiveIncident] = useState<Incident | null>(null);
   const [countdown, setCountdown] = useState<number | null>(null);
-  const [screen, setScreen] = useState<"home" | "contacts" | "about">("home");
+  const [screen, setScreen] = useState<"home" | "contacts" | "signup" | "about">("signup");
+  const [profile, setProfile] = useState<{ name: string; country: string; phone: string } | null>(null);
+  const [signupName, setSignupName] = useState("");
+  const [signupCountry, setSignupCountry] = useState("");
+  const [signupPhone, setSignupPhone] = useState("");
+  const [countryPickerOpen, setCountryPickerOpen] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [relationship, setRelationship] = useState("");
@@ -63,9 +71,12 @@ export default function App() {
         const [savedContacts, savedIncident] = await Promise.all([
           AsyncStorage.getItem(CONTACTS_KEY),
           AsyncStorage.getItem(INCIDENT_KEY),
+          AsyncStorage.getItem(PROFILE_KEY),
         ]);
 
         if (!mounted) return;
+
+        const savedProfile = arguments.length > 0 ? undefined : undefined;
 
         if (savedContacts) {
           try {
