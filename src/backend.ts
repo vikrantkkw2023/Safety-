@@ -151,6 +151,19 @@ export async function createContact(
   return data as ContactRecord;
 }
 
+export async function getIncidentById(userId: string, incidentId: string) {
+  const client = configuredClient();
+  const { data, error } = await client
+    .from("emergency_incidents")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("id", incidentId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data ?? null) as IncidentRecord | null;
+}
+
 export async function updateIncidentStatus(
   userId: string,
   incidentId: string,
