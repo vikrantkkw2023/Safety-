@@ -1,4 +1,4 @@
-import { createContact, getSession } from "./backend";
+import { createContact, findContactByPhone, createIncident, findIncidentByLocalId, getSession } from "./backend";
 import { loadSyncQueue, saveSyncQueue } from "./queueStorage";
 import { removeOperation, type SyncOperation } from "./syncQueue";
 
