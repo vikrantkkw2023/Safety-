@@ -1,4 +1,4 @@
-import { getSession, createContact } from "./backend";
+import { getSession, createContact, findContactByPhone } from "./backend";
 import type { ContactRecord } from "./backend";
 import { enqueueOperation, type SyncOperation } from "./syncQueue";
 
@@ -26,6 +26,8 @@ export async function syncContactWithFallback(
   };
 
   try {
+    const existing = await findContactByPhone(session.user.id, contact.phone);
+    if (existing) return { queue, synced: true };
     await createContact(session.user.id, payload);
     return { queue, synced: true };
   } catch {
