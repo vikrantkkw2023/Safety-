@@ -56,3 +56,12 @@ The current client remains usable without a backend. Do not represent the local 
 - [ ] Supabase project credentials configured by owner
 - [ ] Supabase Auth signup/sign-in connected
 - [ ] Profile/contact/incident sync connected
+
+
+### Backend data-access layer
+- [x] Typed Supabase authentication helpers
+- [x] Profile upsert helper
+- [x] Trusted-contact read helper
+- [x] SOS incident creation helper
+- [ ] Connect these helpers to the mobile UI
+- [ ] Add production authentication UX and account recovery
