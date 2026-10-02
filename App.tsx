@@ -68,15 +68,13 @@ export default function App() {
     let mounted = true;
     (async () => {
       try {
-        const [savedContacts, savedIncident] = await Promise.all([
+        const [savedContacts, savedIncident, savedProfile] = await Promise.all([
           AsyncStorage.getItem(CONTACTS_KEY),
           AsyncStorage.getItem(INCIDENT_KEY),
           AsyncStorage.getItem(PROFILE_KEY),
         ]);
 
         if (!mounted) return;
-
-        const savedProfile = arguments.length > 0 ? undefined : undefined;
 
         if (savedContacts) {
           try {
@@ -95,6 +93,33 @@ export default function App() {
           } catch (error) {
             console.error("Invalid saved contacts", error);
             await AsyncStorage.removeItem(CONTACTS_KEY);
+          }
+        }
+
+        if (savedProfile) {
+          try {
+            const parsedProfile = JSON.parse(savedProfile);
+            if (
+              parsedProfile &&
+              typeof parsedProfile.name === "string" &&
+              typeof parsedProfile.country === "string" &&
+              typeof parsedProfile.phone === "string"
+            ) {
+              setProfile({
+                name: parsedProfile.name,
+                country: parsedProfile.country,
+                phone: parsedProfile.phone,
+              });
+              setSignupName(parsedProfile.name);
+              setSignupCountry(parsedProfile.country);
+              setSignupPhone(parsedProfile.phone);
+              setScreen("home");
+            } else {
+              await AsyncStorage.removeItem(PROFILE_KEY);
+            }
+          } catch (error) {
+            console.error("Invalid saved profile", error);
+            await AsyncStorage.removeItem(PROFILE_KEY);
           }
         }
 
@@ -135,6 +160,50 @@ export default function App() {
     if (!activeIncident) return "";
     return `${activeIncident.latitude.toFixed(6)}, ${activeIncident.longitude.toFixed(6)}`;
   }, [activeIncident]);
+
+  const completeSignup = async () => {
+    const cleanName = signupName.trim();
+    if (!cleanName) {
+      Alert.alert("Name required", "Enter your name.");
+      return;
+    }
+    if (!signupCountry) {
+      Alert.alert("Country required", "Select your country.");
+      return;
+    }
+    const validation = validateCountryPhone(signupPhone, signupCountry);
+    if (!validation.valid || !validation.e164) {
+      Alert.alert("Invalid phone number", validation.reason ?? "Enter a valid phone number for the selected country.");
+      return;
+    }
+    const nextProfile = { name: cleanName, country: signupCountry, phone: validation.e164 };
+    try {
+      await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(nextProfile));
+      setProfile(nextProfile);
+      setSignupPhone(validation.e164);
+      setScreen("home");
+    } catch (error) {
+      console.error("Could not save profile", error);
+      Alert.alert("Could not create account", "Please try again.");
+    }
+  };
+
+  const countryName = (code: string) => {
+    try {
+      const displayNames = new Intl.DisplayNames(["en"], { type: "region" });
+      return displayNames.of(code) ?? code;
+    } catch {
+      return code;
+    }
+  };
+
+  const countries = useMemo(
+    () =>
+      getCountries()
+        .map((code) => ({ code, name: countryName(code), callingCode: getCountryCallingCode(code) }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    []
+  );
 
   const addContact = () => {
     const cleanName = name.trim();
@@ -366,6 +435,89 @@ export default function App() {
     );
   }
 
+  if (screen === "signup" && !profile) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" />
+        <ScrollView contentContainerStyle={styles.content}>
+          <View style={styles.loadingScreen}>
+            <Text style={styles.loadingTitle}>SAFETY</Text>
+            <Text style={styles.title}>Create your account</Text>
+            <Text style={styles.descriptionCenter}>
+              Select your country first. The country calling code and phone validation will update automatically.
+            </Text>
+
+            <View style={styles.card}>
+              <TextInput
+                value={signupName}
+                onChangeText={setSignupName}
+                placeholder="Full name"
+                autoCapitalize="words"
+                style={styles.input}
+              />
+
+              <TouchableOpacity style={styles.countrySelector} onPress={() => setCountryPickerOpen(true)}>
+                <Text style={styles.countrySelectorText}>
+                  {signupCountry
+                    ? `${countryName(signupCountry)}  +${getCountryCallingCode(signupCountry)}`
+                    : "Select country"}
+                </Text>
+                <Text>▼</Text>
+              </TouchableOpacity>
+
+              <View style={styles.phoneRow}>
+                <View style={styles.codeBox}>
+                  <Text style={styles.codeText}>
+                    {signupCountry ? `+${getCountryCallingCode(signupCountry)}` : "+"}
+                  </Text>
+                </View>
+                <TextInput
+                  value={signupPhone}
+                  onChangeText={setSignupPhone}
+                  placeholder={signupCountry ? "Phone number" : "Select country first"}
+                  keyboardType="phone-pad"
+                  editable={Boolean(signupCountry)}
+                  style={[styles.input, styles.phoneInput]}
+                />
+              </View>
+
+              <TouchableOpacity style={styles.primaryButton} onPress={completeSignup}>
+                <Text style={styles.primaryButtonText}>Create account</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+
+        <Modal visible={countryPickerOpen} animationType="slide" onRequestClose={() => setCountryPickerOpen(false)}>
+          <SafeAreaView style={styles.container}>
+            <View style={styles.countryModalHeader}>
+              <Text style={styles.sectionTitle}>Select your country</Text>
+              <TouchableOpacity onPress={() => setCountryPickerOpen(false)}>
+                <Text style={styles.removeText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView>
+              {countries.map((country) => (
+                <TouchableOpacity
+                  key={country.code}
+                  style={styles.countryRow}
+                  onPress={() => {
+                    setSignupCountry(country.code);
+                    setSignupPhone("");
+                    setCountryPickerOpen(false);
+                  }}
+                >
+                  <Text style={styles.countryName}>{country.name}</Text>
+                  <Text style={styles.countryCode}>+{country.callingCode}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </SafeAreaView>
+        </Modal>
+      </SafeAreaView>
+    );
+  }
+
   if (screen === "contacts") {
     return (
       <SafeAreaView style={styles.container}>
@@ -559,6 +711,16 @@ const styles = StyleSheet.create({
   card: { backgroundColor: "white", borderRadius: 16, padding: 18, marginBottom: 16, borderWidth: 1, borderColor: "#EAECF0" },
   sectionTitle: { fontSize: 18, fontWeight: "800", marginBottom: 12 },
   smallText: { color: "#667085", lineHeight: 22 },
+  countrySelector: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderWidth: 1, borderColor: "#D0D5DD", borderRadius: 10, padding: 13, marginBottom: 10 },
+  countrySelectorText: { fontWeight: "600" },
+  phoneRow: { flexDirection: "row", alignItems: "center" },
+  codeBox: { borderWidth: 1, borderColor: "#D0D5DD", borderRadius: 10, padding: 13, marginRight: 8, backgroundColor: "#F2F4F7" },
+  codeText: { fontWeight: "800" },
+  phoneInput: { flex: 1, marginBottom: 10 },
+  countryModalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 20, borderBottomWidth: 1, borderBottomColor: "#EAECF0" },
+  countryRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 15, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: "#F2F4F7" },
+  countryName: { fontSize: 16 },
+  countryCode: { fontWeight: "700", color: "#667085" },
   input: { borderWidth: 1, borderColor: "#D0D5DD", borderRadius: 10, padding: 13, marginBottom: 10, backgroundColor: "#fff" },
   primaryButton: { backgroundColor: "#101828", padding: 14, borderRadius: 10, alignItems: "center" },
   primaryButtonText: { color: "white", fontWeight: "800" },
