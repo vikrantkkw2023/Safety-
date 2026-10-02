@@ -15,7 +15,6 @@ create table if not exists public.profiles (
 create table if not exists public.emergency_contacts (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
-  client_local_id text,
   name text not null,
   phone text not null,
   relationship text,
@@ -26,6 +25,7 @@ create table if not exists public.emergency_contacts (
 create table if not exists public.emergency_incidents (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
+  client_local_id text,
   latitude double precision not null,
   longitude double precision not null,
   accuracy double precision,
@@ -47,6 +47,9 @@ create index if not exists emergency_incidents_user_id_idx
 
 create index if not exists emergency_incidents_status_idx
   on public.emergency_incidents(status);
+
+-- Repair databases created from the earlier draft where client_local_id was attached to contacts.
+alter table public.emergency_incidents add column if not exists client_local_id text;
 
 create unique index if not exists emergency_incidents_client_local_id_idx
   on public.emergency_incidents(user_id, client_local_id)
