@@ -1,0 +1,37 @@
+# MVP 1 Device Testing Checklist
+
+Test on a physical Android/iOS device before treating the app as an emergency tool.
+
+## Setup
+- [ ] Install a development/preview build.
+- [ ] Add at least one trusted contact.
+- [ ] Confirm the contact phone number.
+- [ ] Confirm location services are enabled.
+- [ ] Confirm the device can open the SMS application.
+
+## SOS
+- [ ] Press SOS.
+- [ ] Confirm the 5-second countdown appears.
+- [ ] Cancel during countdown and confirm no incident is created.
+- [ ] Trigger SOS again.
+- [ ] Grant location permission.
+- [ ] Confirm a current location is displayed.
+- [ ] Confirm the Maps link opens at approximately the current location.
+- [ ] Confirm the SMS composer contains the emergency message and location.
+
+## Active emergency
+- [ ] Close and reopen the app.
+- [ ] Confirm the active emergency state is restored.
+- [ ] Call a trusted contact from the active screen.
+- [ ] End the emergency.
+- [ ] Confirm the active state is cleared.
+
+## Failure cases
+- [ ] Deny location permission.
+- [ ] Disable location services.
+- [ ] Use a device without SMS capability.
+- [ ] Use an invalid phone number.
+- [ ] Trigger/cancel repeatedly.
+
+## Safety
+Never use a production emergency number or involve another person in a test without their knowledge and consent. For real danger, use the device's official emergency service.
