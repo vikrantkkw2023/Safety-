@@ -63,8 +63,10 @@ export async function syncIncidentCreate(
 
 export async function syncIncidentEnd(
   userId: string,
-  incidentId: string,
+  localIncidentId: string,
   endedAt: string,
 ): Promise<IncidentRecord> {
-  return updateIncidentStatus(userId, incidentId, "RESOLVED", endedAt);
+  const remote = await findIncidentByLocalId(userId, localIncidentId);
+  if (!remote) throw new Error("REMOTE_INCIDENT_NOT_FOUND");
+  return updateIncidentStatus(userId, remote.id, "RESOLVED", endedAt);
 }
