@@ -15,6 +15,7 @@ create table if not exists public.profiles (
 create table if not exists public.emergency_contacts (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
+  client_local_id text,
   name text not null,
   phone text not null,
   relationship text,
@@ -46,6 +47,10 @@ create index if not exists emergency_incidents_user_id_idx
 
 create index if not exists emergency_incidents_status_idx
   on public.emergency_incidents(status);
+
+create unique index if not exists emergency_incidents_client_local_id_idx
+  on public.emergency_incidents(user_id, client_local_id)
+  where client_local_id is not null;
 
 alter table public.profiles enable row level security;
 alter table public.emergency_contacts enable row level security;
