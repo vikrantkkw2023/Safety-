@@ -266,7 +266,8 @@ export default function App() {
 
   const callContact = async (contact: Contact) => {
     try {
-      await Linking.openURL(`tel:${contact.phone}`);
+      const dialNumber = contact.phone.replace(/[^\d+]/g, "");
+      await Linking.openURL(`tel:${dialNumber}`);
     } catch {
       Alert.alert("Call unavailable", "This device could not open the phone app.");
     }
@@ -390,14 +391,14 @@ export default function App() {
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.activeBanner}>
             <Text style={styles.activeTitle}>SOS ACTIVE</Text>
-            <Text style={styles.activeSubtitle}>Your emergency session is active.</Text>
+            <Text style={styles.activeSubtitle}>Your emergency session is active. Location below was captured when SOS started.</Text>
           </View>
 
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Current location</Text>
             <Text style={styles.location}>{locationText}</Text>
             <Text style={styles.smallText}>
-              Accuracy: {activeIncident.accuracy ? `±${Math.round(activeIncident.accuracy)} m` : "not available"}
+              Accuracy: {activeIncident.accuracy != null ? `±${Math.round(activeIncident.accuracy)} m` : "not available"}
             </Text>
             <TouchableOpacity
               style={styles.secondaryButton}
