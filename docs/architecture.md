@@ -3,7 +3,7 @@
 ## Initial architecture
 
 ```
-Mobile App (FlutterFlow)
+Mobile App (Expo / React Native + TypeScript)
         |
         | Authentication / API
         v
@@ -32,3 +32,12 @@ Trusted Contact
 - Location data is sensitive and must be protected with appropriate database access policies.
 - Secrets/API keys must never be committed to GitHub.
 - Production deployment should use HTTPS/TLS and secure authentication.
+
+
+## Phone identity
+
+- Signup requires a country selection.
+- The country calling code is derived from the selected country.
+- Phone numbers are validated against the selected country's numbering rules.
+- Store the normalized phone number in E.164 format.
+- Do not store a manually typed country code separately from the normalized phone value as the source of truth.
