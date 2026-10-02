@@ -58,3 +58,21 @@ Only after written authorization, technical integration, testing, and applicable
 - dispatch status
 
 The product must never claim guaranteed official response before such an integration is real and operational.
+
+
+## Current development step — Backend safety foundation
+
+Before connecting the mobile app to production services, the database now includes:
+- one ACTIVE incident per user at the database layer;
+- latitude/longitude range validation;
+- non-negative GPS accuracy validation;
+- country code storage for profiles and trusted contacts;
+- unique normalized profile phone numbers.
+
+Next implementation sequence:
+1. Supabase project/Auth connection.
+2. Secure profile and trusted-contact persistence.
+3. Server-side SOS incident creation.
+4. Notification delivery through a trusted server/Edge Function.
+5. Secure recipient location access.
+6. Real-device failure and recovery testing.
