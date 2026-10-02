@@ -100,3 +100,26 @@ alter table public.emergency_incidents
 alter table public.emergency_incidents
   add constraint emergency_incidents_accuracy_nonnegative
   check (accuracy is null or accuracy >= 0);
+
+
+-- Trusted-contact push notification foundation.
+-- Device tokens belong to authenticated users. The server/Edge Function is
+-- responsible for delivering notifications; no privileged key belongs in the app.
+create table if not exists public.notification_devices (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  expo_push_token text not null,
+  platform text not null check (platform in ('ios', 'android')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create unique index if not exists notification_devices_user_token_idx
+  on public.notification_devices(user_id, expo_push_token);
+
+alter table public.notification_devices enable row level security;
+
+create policy "notification devices own rows"
+  on public.notification_devices for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
