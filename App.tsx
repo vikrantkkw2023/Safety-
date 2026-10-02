@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Linking,
@@ -54,6 +54,7 @@ export default function App() {
   const [relationship, setRelationship] = useState("");
   const [busy, setBusy] = useState(false);
   const [storageReady, setStorageReady] = useState(false);
+  const sosInFlightRef = useRef(false);
 
   useEffect(() => {
     let mounted = true;
@@ -166,7 +167,7 @@ export default function App() {
       Alert.alert("Please wait", "Safety is still loading your saved data.");
       return;
     }
-    if (activeIncident || busy || countdown !== null) return;
+    if (activeIncident || busy || countdown !== null || sosInFlightRef.current) return;
     if (contacts.length === 0) {
       Alert.alert("Add a trusted contact", "Please add at least one trusted contact before activating SOS.");
       setScreen("contacts");
@@ -187,6 +188,8 @@ export default function App() {
   }, [countdown]);
 
   const activateSOS = async () => {
+    if (sosInFlightRef.current || activeIncident) return;
+    sosInFlightRef.current = true;
     setBusy(true);
     try {
       const permission = await Location.requestForegroundPermissionsAsync();
@@ -234,6 +237,7 @@ export default function App() {
       Alert.alert("SOS could not be completed", message);
     } finally {
       setBusy(false);
+      sosInFlightRef.current = false;
     }
   };
 
