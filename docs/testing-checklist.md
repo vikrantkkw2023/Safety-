@@ -35,3 +35,14 @@ Test on a physical Android/iOS device before treating the app as an emergency to
 
 ## Safety
 Never use a production emergency number or involve another person in a test without their knowledge and consent. For real danger, use the device's official emergency service.
+
+
+## Backend integrity tests (when Supabase is connected)
+
+- Attempt to create two ACTIVE incidents for the same user; the second must be rejected by the database constraint.
+- Verify latitude outside -90..90 is rejected.
+- Verify longitude outside -180..180 is rejected.
+- Verify negative GPS accuracy is rejected.
+- Verify one user's contacts/incidents cannot be read or modified using another user's authenticated session.
+- Verify no service-role key is present in the mobile bundle or repository.
+- Verify a failed notification does not delete or mark the incident resolved.
