@@ -13,3 +13,8 @@ export function validatePassword(password: string): string | null {
   if (password.length > 128) return "Password is too long.";
   return null;
 }
+
+
+export function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
