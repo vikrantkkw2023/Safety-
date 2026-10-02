@@ -70,3 +70,28 @@ create policy "incidents own rows"
 -- Notification delivery to trusted contacts must not expose the Supabase
 -- service-role key in the mobile app. Use a trusted server/Edge Function
 -- for production notifications.
+
+
+-- Prevent more than one ACTIVE incident per user at the database layer.
+create unique index if not exists emergency_incidents_one_active_per_user_idx
+  on public.emergency_incidents(user_id)
+  where status = 'ACTIVE';
+
+-- Basic coordinate safety checks.
+alter table public.emergency_incidents
+  drop constraint if exists emergency_incidents_latitude_range;
+alter table public.emergency_incidents
+  add constraint emergency_incidents_latitude_range
+  check (latitude between -90 and 90);
+
+alter table public.emergency_incidents
+  drop constraint if exists emergency_incidents_longitude_range;
+alter table public.emergency_incidents
+  add constraint emergency_incidents_longitude_range
+  check (longitude between -180 and 180);
+
+alter table public.emergency_incidents
+  drop constraint if exists emergency_incidents_accuracy_nonnegative;
+alter table public.emergency_incidents
+  add constraint emergency_incidents_accuracy_nonnegative
+  check (accuracy is null or accuracy >= 0);
