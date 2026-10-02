@@ -47,3 +47,12 @@ The current client remains usable without a backend. Do not represent the local 
 - [x] No real emergency-service number is embedded in the app.
 - [x] Test-only placeholder is intentionally invalid: +00 000 000 0000
 - [ ] Replace with an authorized production emergency integration only after end-to-end testing and approval.
+
+
+### Backend integration foundation
+- [x] Supabase JS client dependency added
+- [x] Optional Supabase client module added
+- [x] Mobile client refuses to require backend configuration at startup
+- [ ] Supabase project credentials configured by owner
+- [ ] Supabase Auth signup/sign-in connected
+- [ ] Profile/contact/incident sync connected
