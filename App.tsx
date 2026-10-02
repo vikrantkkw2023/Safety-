@@ -14,6 +14,7 @@ import {
 import * as Location from "expo-location";
 import * as SMS from "expo-sms";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { isDuplicatePhone, isValidActiveIncident, isValidPhone, normalizePhone } from "./src/safetyRules";
 
 type Contact = {
   id: string;
@@ -88,13 +89,7 @@ export default function App() {
         if (savedIncident) {
           try {
             const parsed = JSON.parse(savedIncident);
-            const validIncident =
-              parsed &&
-              typeof parsed.id === "string" &&
-              Number.isFinite(parsed.latitude) &&
-              Number.isFinite(parsed.longitude) &&
-              typeof parsed.startedAt === "string" &&
-              parsed.status === "ACTIVE";
+            const validIncident = isValidActiveIncident(parsed);
             if (validIncident) setActiveIncident(parsed);
             else await AsyncStorage.removeItem(INCIDENT_KEY);
           } catch (error) {
@@ -136,12 +131,12 @@ export default function App() {
       Alert.alert("Missing information", "Enter the contact name and phone number.");
       return;
     }
-    const phoneDigits = cleanPhone.replace(/\D/g, "");
-    if (phoneDigits.length < 7 || phoneDigits.length > 15) {
+    const phoneDigits = normalizePhone(cleanPhone);
+    if (!isValidPhone(cleanPhone)) {
       Alert.alert("Invalid phone number", "Enter a valid phone number with 7–15 digits.");
       return;
     }
-    if (contacts.some((c) => c.phone.replace(/\D/g, "") === phoneDigits)) {
+    if (isDuplicatePhone(contacts.map((c) => c.phone), cleanPhone)) {
       Alert.alert("Already added", "This phone number is already a trusted contact.");
       return;
     }
