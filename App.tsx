@@ -47,7 +47,7 @@ export default function App() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [activeIncident, setActiveIncident] = useState<Incident | null>(null);
   const [countdown, setCountdown] = useState<number | null>(null);
-  const [screen, setScreen] = useState<"home" | "contacts">("home");
+  const [screen, setScreen] = useState<"home" | "contacts" | "about">("home");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [relationship, setRelationship] = useState("");
@@ -72,12 +72,18 @@ export default function App() {
   }, [activeIncident]);
 
   const addContact = () => {
-    const cleanPhone = phone.trim();
-    if (!name.trim() || !cleanPhone) {
+    const cleanName = name.trim();
+    const cleanPhone = phone.trim().replace(/\s+/g, " ");
+    if (!cleanName || !cleanPhone) {
       Alert.alert("Missing information", "Enter the contact name and phone number.");
       return;
     }
-    if (contacts.some((c) => c.phone === cleanPhone)) {
+    const phoneDigits = cleanPhone.replace(/\D/g, "");
+    if (phoneDigits.length < 7 || phoneDigits.length > 15) {
+      Alert.alert("Invalid phone number", "Enter a valid phone number with 7–15 digits.");
+      return;
+    }
+    if (contacts.some((c) => c.phone.replace(/\D/g, "") === phoneDigits)) {
       Alert.alert("Already added", "This phone number is already a trusted contact.");
       return;
     }
@@ -85,7 +91,7 @@ export default function App() {
       ...current,
       {
         id: `${Date.now()}-${Math.random()}`,
-        name: name.trim(),
+        name: cleanName,
         phone: cleanPhone,
         relationship: relationship.trim() || "Trusted contact",
       },
@@ -103,7 +109,7 @@ export default function App() {
   };
 
   const beginSOS = () => {
-    if (activeIncident) return;
+    if (activeIncident || busy || countdown !== null) return;
     if (contacts.length === 0) {
       Alert.alert("Add a trusted contact", "Please add at least one trusted contact before activating SOS.");
       setScreen("contacts");
@@ -135,9 +141,10 @@ export default function App() {
         return;
       }
 
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-      });
+      const position = await Promise.race([
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("LOCATION_TIMEOUT")), 15000)),
+      ]);
 
       const incident: Incident = {
         id: `SOS-${Date.now()}`,
@@ -153,10 +160,10 @@ export default function App() {
       await sendEmergencyMessages(incident);
     } catch (error) {
       console.error(error);
-      Alert.alert(
-        "SOS could not be completed",
-        "We could not obtain your location. Check location services and try again."
-      );
+      const message = error instanceof Error && error.message === "LOCATION_TIMEOUT"
+        ? "Location took too long to respond. Check GPS/location services and try again."
+        : "We could not obtain your location. Check location services and try again.";
+      Alert.alert("SOS could not be completed", message);
     } finally {
       setBusy(false);
     }
@@ -164,7 +171,7 @@ export default function App() {
 
   const sendEmergencyMessages = async (incident: Incident) => {
     const body =
-      "EMERGENCY SOS from my Safety app. I may need help. My current location is: " +
+      "[TEST MODE] EMERGENCY SOS from my Safety app. I may need help. My current location is: " +
       mapsUrl(incident.latitude, incident.longitude) +
       ". Please contact me and seek appropriate emergency assistance if needed.";
 
