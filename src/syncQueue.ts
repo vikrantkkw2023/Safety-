@@ -6,6 +6,8 @@ export type SyncOperation =
 
 const MAX_QUEUE_ITEMS = 50;
 
+export const SYNC_QUEUE_KEY = "safety.syncQueue.v1";
+
 export function enqueueOperation(queue: SyncOperation[], operation: SyncOperation): SyncOperation[] {
   if (queue.length >= MAX_QUEUE_ITEMS) {
     return [...queue.slice(queue.length - MAX_QUEUE_ITEMS + 1), operation];
@@ -16,4 +18,27 @@ export function enqueueOperation(queue: SyncOperation[], operation: SyncOperatio
 export function removeOperation(queue: SyncOperation[], index: number): SyncOperation[] {
   if (index < 0 || index >= queue.length) return queue;
   return queue.filter((_, i) => i !== index);
+}
+
+
+export function parseSyncQueue(raw: string | null): SyncOperation[] {
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(isSyncOperation);
+  } catch {
+    return [];
+  }
+}
+
+function isSyncOperation(value: unknown): value is SyncOperation {
+  if (!value || typeof value !== "object") return false;
+  const item = value as Record<string, unknown>;
+  if (typeof item.type !== "string" || !item.payload || typeof item.payload !== "object") return false;
+  return ["PROFILE_UPSERT", "CONTACT_CREATE", "INCIDENT_CREATE", "INCIDENT_STATUS"].includes(item.type);
+}
+
+export function serializeSyncQueue(queue: SyncOperation[]): string {
+  return JSON.stringify(queue.slice(-MAX_QUEUE_ITEMS));
 }
