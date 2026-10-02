@@ -34,6 +34,11 @@ type Incident = {
 const CONTACTS_KEY = "safety.contacts.v1";
 const INCIDENT_KEY = "safety.activeIncident.v1";
 
+// TEST-ONLY emergency service placeholder. This is intentionally invalid and
+// must never be dialed or messaged. Replace only after the emergency workflow
+// is fully tested and an authorized production integration is approved.
+const TEST_EMERGENCY_NUMBER = "+00 000 000 0000";
+
 function mapsUrl(lat: number, lon: number) {
   return `https://maps.google.com/?q=${lat},${lon}`;
 }
