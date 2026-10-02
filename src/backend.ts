@@ -109,6 +109,19 @@ export async function createIncident(
 }
 
 
+export async function findContactByPhone(userId: string, phone: string) {
+  const client = configuredClient();
+  const { data, error } = await client
+    .from("emergency_contacts")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("phone", phone)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data ?? null) as ContactRecord | null;
+}
+
 export async function createContact(
   userId: string,
   contact: Omit<ContactRecord, "id" | "user_id">
