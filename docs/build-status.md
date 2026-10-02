@@ -37,3 +37,9 @@
 - [ ] Security review
 
 The current client remains usable without a backend. Do not represent the local MVP as guaranteed emergency dispatch.
+
+
+## Emergency-number testing policy
+- [x] No real emergency-service number is embedded in the app.
+- [x] Test-only placeholder is intentionally invalid: +00 000 000 0000
+- [ ] Replace with an authorized production emergency integration only after end-to-end testing and approval.
