@@ -42,9 +42,13 @@ export async function getCurrentUser(): Promise<User | null> {
   return data.user;
 }
 
-export async function createEmailAccount(email: string, password: string) {
+export async function createEmailAccount(email: string, password: string, redirectTo?: string) {
   const client = configuredClient();
-  return client.auth.signUp({ email, password });
+  return client.auth.signUp({
+    email,
+    password,
+    options: redirectTo ? { emailRedirectTo: redirectTo } : undefined,
+  });
 }
 
 export async function signInEmailAccount(email: string, password: string) {
@@ -182,4 +186,17 @@ export async function syncProfileIfAuthenticated(
   profile: Omit<ProfileRecord, "id">
 ) {
   return upsertProfile(userId, profile);
+}
+
+
+export async function getSession() {
+  if (!supabase) return null;
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  return data.session;
+}
+
+export function onAuthStateChange(callback: Parameters<SupabaseClient["auth"]["onAuthStateChange"]>[0]) {
+  if (!supabase) return { data: { subscription: { unsubscribe: () => undefined } } };
+  return supabase.auth.onAuthStateChange(callback);
 }
