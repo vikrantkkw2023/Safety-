@@ -196,7 +196,38 @@ export default function App() {
       if (permission.status !== "granted") {
         Alert.alert(
           "Location permission required",
-          "Safety needs location permission to include your current location in an SOS. You can enable it in phone settings."
+          "Safety needs location permission to include your current location in an SOS.",
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Open Settings",
+              onPress: () => {
+                Linking.openSettings().catch(() => {
+                  Alert.alert("Settings unavailable", "Open your phone settings and enable location permission for Safety.");
+                });
+              },
+            },
+          ]
+        );
+        return;
+      }
+
+      const servicesEnabled = await Location.hasServicesEnabledAsync();
+      if (!servicesEnabled) {
+        Alert.alert(
+          "Location services are off",
+          "Turn on your phone's location services so Safety can capture your location.",
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Open Settings",
+              onPress: () => {
+                Linking.openSettings().catch(() => {
+                  Alert.alert("Settings unavailable", "Open your phone settings and enable location services.");
+                });
+              },
+            },
+          ]
         );
         return;
       }
