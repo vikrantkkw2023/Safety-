@@ -17,6 +17,10 @@ import * as SMS from "expo-sms";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getCountries, getCountryCallingCode } from "libphonenumber-js";
 import { isDuplicatePhone, isValidActiveIncident, isValidPhone, normalizePhone, validateCountryPhone } from "./src/safetyRules";
+import { persistAndSyncIncident, endAndSyncIncident } from "./src/sosCoordinator";
+import { initializeBackendSync, recoverBackendContacts } from "./src/appSync";
+import { getActiveIncident } from "./src/backend";
+import { mergeContacts } from "./src/contactMerge";
 
 type Contact = {
   id: string;
@@ -121,6 +125,32 @@ export default function App() {
             console.error("Invalid saved profile", error);
             await AsyncStorage.removeItem(PROFILE_KEY);
           }
+        }
+
+        // Retry previously queued backend work and recover server-side contacts/incidents.
+        try {
+          await initializeBackendSync();
+          const remoteContacts = await recoverBackendContacts();
+          if (remoteContacts && mounted) {
+            setContacts((current) => mergeContacts(current, remoteContacts));
+          }
+          const remoteActive = await getActiveIncident((await import("./src/backend")).getCurrentUser().then((u) => u?.id ?? ""));
+          if (remoteActive && mounted && !savedIncident) {
+            const recovered: Incident = {
+              id: remoteActive.client_local_id ?? remoteActive.id,
+              latitude: remoteActive.latitude,
+              longitude: remoteActive.longitude,
+              accuracy: remoteActive.accuracy ?? undefined,
+              startedAt: remoteActive.started_at,
+              status: "ACTIVE",
+            };
+            if (isValidActiveIncident(recovered)) {
+              await AsyncStorage.setItem(INCIDENT_KEY, JSON.stringify(recovered));
+              setActiveIncident(recovered);
+            }
+          }
+        } catch (syncError) {
+          console.error("Backend startup sync/recovery failed", syncError);
         }
 
         if (savedIncident) {
@@ -333,6 +363,13 @@ export default function App() {
       await AsyncStorage.setItem(INCIDENT_KEY, JSON.stringify(incident));
       setActiveIncident(incident);
 
+      // Local activation is authoritative for the user experience; backend sync is best-effort.
+      try {
+        await persistAndSyncIncident(incident);
+      } catch (syncError) {
+        console.error("Incident backend sync failed", syncError);
+      }
+
       // The incident is already active even if the device cannot prepare an SMS.
       // Do not turn an SMS failure into an SOS failure.
       try {
@@ -400,8 +437,15 @@ export default function App() {
         style: "destructive",
         onPress: async () => {
           try {
+            const endedAt = new Date().toISOString();
+            // Clear the local active state immediately; backend resolution is best-effort and queued on failure.
             await AsyncStorage.removeItem(INCIDENT_KEY);
             setActiveIncident(null);
+            try {
+              await endAndSyncIncident(activeIncident, endedAt);
+            } catch (syncError) {
+              console.error("Incident resolution sync failed", syncError);
+            }
           } catch (error) {
             console.error(error);
             Alert.alert("Could not end SOS", "Please try again.");
