@@ -7,6 +7,7 @@ create extension if not exists pgcrypto;
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   name text,
+  country_code text,
   phone text,
   created_at timestamptz not null default now()
 );
@@ -17,6 +18,7 @@ create table if not exists public.emergency_contacts (
   name text not null,
   phone text not null,
   relationship text,
+  country_code text,
   created_at timestamptz not null default now()
 );
 
@@ -31,6 +33,10 @@ create table if not exists public.emergency_incidents (
   status text not null default 'ACTIVE'
     check (status in ('ACTIVE', 'CANCELLED', 'RESOLVED'))
 );
+
+create unique index if not exists profiles_phone_unique_idx
+  on public.profiles(phone)
+  where phone is not null;
 
 create index if not exists emergency_contacts_user_id_idx
   on public.emergency_contacts(user_id);
