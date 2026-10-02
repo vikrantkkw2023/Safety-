@@ -219,7 +219,18 @@ export default function App() {
 
       await AsyncStorage.setItem(INCIDENT_KEY, JSON.stringify(incident));
       setActiveIncident(incident);
-      await sendEmergencyMessages(incident);
+
+      // The incident is already active even if the device cannot prepare an SMS.
+      // Do not turn an SMS failure into an SOS failure.
+      try {
+        await sendEmergencyMessages(incident);
+      } catch (messageError) {
+        console.error("Emergency message handoff failed", messageError);
+        Alert.alert(
+          "SOS active — message not completed",
+          "Your emergency session is active, but the SMS handoff could not be completed. Call a trusted contact and share the location from this screen."
+        );
+      }
     } catch (error) {
       console.error(error);
       const message = error instanceof Error && error.message === "LOCATION_TIMEOUT"
