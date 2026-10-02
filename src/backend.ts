@@ -138,3 +138,29 @@ export async function updateIncidentStatus(
   if (error) throw error;
   return data as IncidentRecord;
 }
+
+
+export async function getActiveIncident(userId: string) {
+  const client = configuredClient();
+  const { data, error } = await client
+    .from("emergency_incidents")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("status", "ACTIVE")
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data ?? null) as IncidentRecord | null;
+}
+
+export async function listProfile(userId: string) {
+  const client = configuredClient();
+  const { data, error } = await client
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data ?? null) as ProfileRecord | null;
+}
