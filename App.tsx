@@ -201,10 +201,22 @@ export default function App() {
 
   const endSOS = async () => {
     if (!activeIncident) return;
-    const resolved = { ...activeIncident, status: "RESOLVED" as const };
-    await AsyncStorage.removeItem(INCIDENT_KEY);
-    setActiveIncident(null);
-    Alert.alert("Emergency ended", "The SOS session has been ended on this device.");
+    Alert.alert("End emergency?", "Only end SOS if you are safe.", [
+      { text: "Keep SOS active", style: "cancel" },
+      {
+        text: "End emergency",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await AsyncStorage.removeItem(INCIDENT_KEY);
+            setActiveIncident(null);
+          } catch (error) {
+            console.error(error);
+            Alert.alert("Could not end SOS", "Please try again.");
+          }
+        },
+      },
+    ]);
   };
 
   const renderHeader = () => (
