@@ -5,6 +5,7 @@ import {
   isValidActiveIncident,
   isValidPhone,
   normalizePhone,
+  validateCountryPhone,
 } from "../src/safetyRules";
 
 test("normalizes phone numbers", () => {
@@ -36,4 +37,13 @@ test("validates only active incidents with finite coordinates", () => {
     id: "SOS-3", latitude: 18.52, longitude: 73.85,
     startedAt: "2026-10-02T00:00:00.000Z", status: "RESOLVED"
   }), false);
+});
+
+
+test("validates phone length and format for the selected country", () => {
+  assert.equal(validateCountryPhone("9876543210", "IN").valid, true);
+  assert.equal(validateCountryPhone("12345", "IN").valid, false);
+  assert.equal(validateCountryPhone("2025550125", "US").valid, true);
+  assert.equal(validateCountryPhone("12345", "US").valid, false);
+  assert.equal(validateCountryPhone("9876543210", "").valid, false);
 });
