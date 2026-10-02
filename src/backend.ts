@@ -103,3 +103,38 @@ export async function createIncident(
   if (error) throw error;
   return data as IncidentRecord;
 }
+
+
+export async function createContact(
+  userId: string,
+  contact: Omit<ContactRecord, "id" | "user_id">
+) {
+  const client = configuredClient();
+  const { data, error } = await client
+    .from("emergency_contacts")
+    .insert({ user_id: userId, ...contact })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as ContactRecord;
+}
+
+export async function updateIncidentStatus(
+  userId: string,
+  incidentId: string,
+  status: IncidentRecord["status"],
+  endedAt: string | null
+) {
+  const client = configuredClient();
+  const { data, error } = await client
+    .from("emergency_incidents")
+    .update({ status, ended_at: endedAt })
+    .eq("id", incidentId)
+    .eq("user_id", userId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as IncidentRecord;
+}
