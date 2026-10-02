@@ -20,6 +20,7 @@ export type ContactRecord = {
 export type IncidentRecord = {
   id: string;
   user_id: string;
+  client_local_id: string | null;
   latitude: number;
   longitude: number;
   accuracy: number | null;
