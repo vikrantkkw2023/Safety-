@@ -65,3 +65,11 @@ The current client remains usable without a backend. Do not represent the local 
 - [x] SOS incident creation helper
 - [ ] Connect these helpers to the mobile UI
 - [ ] Add production authentication UX and account recovery
+
+
+### Reliability layer
+- [x] Persistent sync-queue primitives with validation and a 50-item bound
+- [x] Backend active-incident recovery query
+- [x] Backend profile recovery query
+- [ ] Wire queue persistence into App.tsx
+- [ ] Wire backend synchronization into App.tsx
