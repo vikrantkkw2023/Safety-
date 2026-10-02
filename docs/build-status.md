@@ -73,3 +73,13 @@ The current client remains usable without a backend. Do not represent the local 
 - [x] Backend profile recovery query
 - [ ] Wire queue persistence into App.tsx
 - [ ] Wire backend synchronization into App.tsx
+
+
+### Authentication foundation
+- [x] Email/password input validation
+- [x] Supabase signup helper with optional email redirect
+- [x] Supabase session recovery helper
+- [x] Supabase auth-state subscription helper
+- [ ] Add production login/signup UI
+- [ ] Verify email flow on a real Supabase project
+- [ ] Connect authenticated session to mobile profile
