@@ -1,28 +1,24 @@
-import { createContact, findContactByPhone, createIncident, findIncidentByLocalId, getSession, updateIncidentStatus } from "./backend";
+import { createContact, createIncident, findContactByPhone, findIncidentByLocalId, getSession, updateIncidentStatus } from "./backend";
 import { loadSyncQueue, saveSyncQueue } from "./queueStorage";
 import { removeOperation, type SyncOperation } from "./syncQueue";
 
 export async function retryPendingSync(): Promise<{ remaining: number; synced: number }> {
-  const queue = await loadSyncQueue();
-  if (queue.length === 0) return { remaining: 0, synced: 0 };
+  let current = await loadSyncQueue();
+  if (current.length === 0) return { remaining: 0, synced: 0 };
 
   const session = await getSession();
-  if (!session?.user?.id) return { remaining: queue.length, synced: 0 };
+  if (!session?.user?.id) return { remaining: current.length, synced: 0 };
 
-  let current = queue;
   let synced = 0;
 
-  for (let index = 0; index < queue.length; index += 1) {
-    const operation = queue[index];
-    if (!operation) continue;
+  while (current.length > 0) {
+    const operation = current[0];
+    if (!operation) break;
 
     try {
       if (operation.type === "CONTACT_CREATE") {
         const phone = operation.payload.phone;
-        const existing = await import("./backend").then((m) =>
-          m.findContactByPhone(session.user.id, phone)
-        );
-
+        const existing = await findContactByPhone(session.user.id, phone);
         if (!existing) {
           await createContact(session.user.id, {
             name: operation.payload.name,
@@ -31,15 +27,45 @@ export async function retryPendingSync(): Promise<{ remaining: number; synced: n
             country_code: operation.payload.country_code || null,
           });
         }
+      } else if (operation.type === "INCIDENT_CREATE") {
+        const localId = operation.payload.local_id;
+        if (!localId) throw new Error("MISSING_LOCAL_INCIDENT_ID");
 
-        current = removeOperation(current, 0);
-        synced += 1;
-        await saveSyncQueue(current);
-        continue;
+        const existing = await findIncidentByLocalId(session.user.id, localId);
+        if (!existing) {
+          await createIncident(session.user.id, {
+            client_local_id: localId,
+            latitude: Number(operation.payload.latitude),
+            longitude: Number(operation.payload.longitude),
+            accuracy: operation.payload.accuracy == null ? null : Number(operation.payload.accuracy),
+            started_at: String(operation.payload.started_at),
+          });
+        }
+      } else if (operation.type === "INCIDENT_STATUS") {
+        const localId = operation.payload.incident_id;
+        if (!localId) throw new Error("MISSING_LOCAL_INCIDENT_ID");
+
+        const remote = await findIncidentByLocalId(session.user.id, localId);
+        if (!remote) {
+          // Preserve FIFO ordering: create must reach the server before its status.
+          break;
+        }
+
+        const status = operation.payload.status;
+        if (status !== "RESOLVED" && status !== "CANCELLED" && status !== "ACTIVE") {
+          throw new Error("INVALID_INCIDENT_STATUS");
+        }
+        await updateIncidentStatus(
+          session.user.id,
+          remote.id,
+          status,
+          operation.payload.ended_at ?? null,
+        );
       }
 
-      // Other operation types remain queued until their dedicated sync handlers exist.
-      break;
+      current = removeOperation(current, 0);
+      synced += 1;
+      await saveSyncQueue(current);
     } catch (error) {
       console.error("Pending sync failed", operation.type, error);
       break;
