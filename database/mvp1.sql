@@ -49,6 +49,7 @@ create index if not exists emergency_incidents_status_idx
   on public.emergency_incidents(status);
 
 -- Repair databases created from the earlier draft where client_local_id was attached to contacts.
+alter table public.emergency_contacts drop column if exists client_local_id;
 alter table public.emergency_incidents add column if not exists client_local_id text;
 
 create unique index if not exists emergency_incidents_client_local_id_idx
