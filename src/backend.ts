@@ -101,13 +101,14 @@ export async function findIncidentByLocalId(userId: string, localId: string) {
 
 export async function createIncident(
   userId: string,
-  incident: Pick<IncidentRecord, "latitude" | "longitude" | "accuracy" | "started_at">
+  incident: Pick<IncidentRecord, "latitude" | "longitude" | "accuracy" | "started_at"> & { client_local_id?: string }
 ) {
   const client = configuredClient();
   const { data, error } = await client
     .from("emergency_incidents")
     .insert({
       user_id: userId,
+      client_local_id: incident.client_local_id,
       latitude: incident.latitude,
       longitude: incident.longitude,
       accuracy: incident.accuracy,
