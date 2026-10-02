@@ -132,6 +132,10 @@ export default function App() {
       Alert.alert("Missing information", "Enter the contact name and phone number.");
       return;
     }
+    if (cleanName.length > 80 || cleanPhone.length > 30 || relationship.trim().length > 50) {
+      Alert.alert("Input too long", "Keep the name under 80 characters, phone number under 30 characters, and relationship under 50 characters.");
+      return;
+    }
     const phoneDigits = normalizePhone(cleanPhone);
     if (!isValidPhone(cleanPhone)) {
       Alert.alert("Invalid phone number", "Enter a valid phone number with 7–15 digits.");
@@ -297,6 +301,10 @@ export default function App() {
   const callContact = async (contact: Contact) => {
     try {
       const dialNumber = contact.phone.replace(/[^\d+]/g, "");
+      if (!isValidPhone(dialNumber)) {
+        Alert.alert("Invalid contact number", "This trusted contact has an invalid phone number. Edit or remove the contact.");
+        return;
+      }
       await Linking.openURL(`tel:${dialNumber}`);
     } catch {
       Alert.alert("Call unavailable", "This device could not open the phone app.");
