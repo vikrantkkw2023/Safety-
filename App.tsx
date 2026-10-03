@@ -28,6 +28,7 @@ import { syncProfileWithFallback } from "./src/profileSync";
 import { onAuthStateChange } from "./src/backend";
 import { registerNotificationDevice } from "./src/notificationRegistration";
 import { createAudioEvidence, uploadAudioEvidence, updateAudioEvidenceStatus } from "./src/backend";
+import { startLiveLocation } from "./src/liveLocation";
 import { isSupabaseConfigured } from "./src/supabase";
 import { normalizeEmail, validateEmail, validatePassword } from "./src/authRules";
 
@@ -84,6 +85,7 @@ export default function App() {
   const audioRecorder = useAudioRecorder({ ...RecordingPresets.HIGH_QUALITY, directory: "document" });
   const audioRecordingRef = useRef(false);
   const audioStartedAtRef = useRef<string | null>(null);
+  const liveLocationSubscriptionRef = useRef<{ remove: () => void } | null>(null);
 
   useEffect(() => {
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
@@ -498,6 +500,10 @@ export default function App() {
       await AsyncStorage.setItem(INCIDENT_KEY, JSON.stringify(incident));
       setActiveIncident(incident);
       void startSOSAudio();
+      void startLiveLocation(incident.id).then((subscription) => {
+        liveLocationSubscriptionRef.current?.remove();
+        liveLocationSubscriptionRef.current = subscription;
+      }).catch((error) => console.error("Live location could not start", error));
 
       // Local activation is authoritative for the user experience; backend sync is best-effort.
       try {
@@ -574,6 +580,8 @@ export default function App() {
         onPress: async () => {
           try {
             const endedAt = new Date().toISOString();
+            liveLocationSubscriptionRef.current?.remove();
+            liveLocationSubscriptionRef.current = null;
             const recordedAudioUri = await stopSOSAudio();
             if (recordedAudioUri && audioStartedAtRef.current && supabase) {
               const currentUser = await getCurrentUser();
