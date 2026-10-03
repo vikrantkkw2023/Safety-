@@ -941,7 +941,7 @@ export default function App() {
               <View style={styles.phoneRow}>
                 <View style={styles.codeBox}>
                   <Text style={styles.codeText}>
-                    {signupCountry ? `+${getCountryCallingCode(signupCountry)}` : "+"}
+                    {signupCountry ? `+${getCountryCallingCode(signupCountry as import("libphonenumber-js").CountryCode)}` : "+"}
                   </Text>
                 </View>
                 <TextInput
