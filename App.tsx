@@ -23,7 +23,7 @@ import { getCountries, getCountryCallingCode } from "libphonenumber-js";
 import { isDuplicatePhone, isValidActiveIncident, isValidPhone, normalizePhone, validateCountryPhone, validateInternationalPhone } from "./src/safetyRules";
 import { persistAndSyncIncident, endAndSyncIncident } from "./src/sosCoordinator";
 import { initializeBackendSync, recoverBackendContacts } from "./src/appSync";
-import { createEmailAccount, getActiveIncident, getCurrentUser, resetEmailPassword, signInEmailAccount, signOutAccount, getGrantedIncident, acknowledgeIncident, listIncidentHistory, notifyActiveIncident, createContactLinkInvitation, redeemContactLinkInvitation } from "./src/backend";
+import { createEmailAccount, getActiveIncident, getCurrentUser, resetEmailPassword, signInEmailAccount, signOutAccount, getGrantedIncident, acknowledgeIncident, deleteResolvedIncident, listIncidentHistory, notifyActiveIncident, createContactLinkInvitation, redeemContactLinkInvitation } from "./src/backend";
 import { mergeContacts } from "./src/contactMerge";
 import { syncContactWithFallback } from "./src/contactSync";
 import { syncProfileWithFallback } from "./src/profileSync";
@@ -1100,6 +1100,35 @@ export default function App() {
               <TouchableOpacity style={styles.secondaryButton} onPress={() => void Linking.openURL(mapsUrl(incident.latitude, incident.longitude))}>
                 <Text style={styles.secondaryButtonText}>Open start location</Text>
               </TouchableOpacity>
+              {incident.status !== "ACTIVE" && (
+                <TouchableOpacity
+                  style={styles.secondaryButton}
+                  onPress={() => {
+                    Alert.alert(
+                      "Delete emergency history?",
+                      "This permanently removes this resolved emergency from your Safety account.",
+                      [
+                        { text: "Keep", style: "cancel" },
+                        {
+                          text: "Delete",
+                          style: "destructive",
+                          onPress: async () => {
+                            try {
+                              await deleteResolvedIncident(incident.id);
+                              setIncidentHistory((items) => items.filter((item) => item.id !== incident.id));
+                            } catch (error) {
+                              console.error("Incident deletion failed", error);
+                              Alert.alert("Delete failed", "Safety could not remove this emergency. Try again later.");
+                            }
+                          },
+                        },
+                      ],
+                    );
+                  }}
+                >
+                  <Text style={styles.secondaryButtonText}>Delete from history</Text>
+                </TouchableOpacity>
+              )}
             </View>
           ))}
           <TouchableOpacity style={styles.secondaryButton} onPress={() => setScreen("home")}>
