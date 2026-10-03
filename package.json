@@ -22,7 +22,8 @@
     "libphonenumber-js": "^1.13.14",
     "@supabase/supabase-js": "^2.57.4",
     "expo-notifications": "~0.32.17",
-    "expo-audio": "~0.4.0"
+    "expo-audio": "~1.1.1",
+    "expo-constants": "~18.0.14"
   },
   "devDependencies": {
     "@types/react": "~19.1.10",
