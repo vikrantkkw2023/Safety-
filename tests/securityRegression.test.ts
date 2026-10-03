@@ -79,3 +79,11 @@ test("receipt worker is scheduled through the protected maintenance workflow", a
   assert.match(workflow, /x-safety-worker-secret/);
   assert.match(workflow, /SUPABASE_PROJECT_ID/);
 });
+
+
+test("Expo release config has both native application identifiers", async () => {
+  const app = JSON.parse(await read("app.json"));
+  assert.equal(app.expo.android.package, "com.safety.emergency");
+  assert.equal(app.expo.ios.bundleIdentifier, "com.safety.emergency");
+  assert.equal(app.expo.scheme, "safety");
+});
