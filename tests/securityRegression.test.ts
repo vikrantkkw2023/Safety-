@@ -57,3 +57,12 @@ test("database enforces a one-way incident lifecycle", async () => {
   assert.match(sql, /INCIDENT_ALREADY_ENDED/);
   assert.match(sql, /INCIDENT_IMMUTABLE_FIELDS/);
 });
+
+
+test("versioned migration safely recreates named policies", async () => {
+  const sql = await read("supabase/migrations/20261003_000001_initial_safety.sql");
+  const policies = [...sql.matchAll(/create policy "([^"]+)"/g)].map((match) => match[1]);
+  for (const policy of policies) {
+    assert.match(sql, new RegExp("drop policy if exists \\"" + policy.replace(/[.*+?^{}()|[\]\\]/g, "\\$&") + "\\""));
+  }
+});
