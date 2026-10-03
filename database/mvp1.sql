@@ -225,6 +225,26 @@ create policy "audio owner delete"
   );
 
 
+-- One-time trusted-contact linking invitations.
+create table if not exists public.contact_link_invitations (
+  id uuid primary key default gen_random_uuid(),
+  contact_id uuid not null references public.emergency_contacts(id) on delete cascade,
+  owner_user_id uuid not null references auth.users(id) on delete cascade,
+  token_hash text not null unique,
+  expires_at timestamptz not null,
+  consumed_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists contact_link_invitations_owner_idx
+  on public.contact_link_invitations(owner_user_id);
+
+alter table public.contact_link_invitations enable row level security;
+
+create policy "contact link invitation owner read"
+  on public.contact_link_invitations for select
+  using (auth.uid() = owner_user_id);
+
 -- Trusted-contact account linking.
 -- A contact can be linked only by an authenticated, verified workflow.
 alter table public.emergency_contacts
