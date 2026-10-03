@@ -1,0 +1,40 @@
+name: Safety Edge Functions CI
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "supabase/functions/**"
+      - "supabase/config.toml"
+      - ".github/workflows/supabase-functions-ci.yml"
+  pull_request:
+    paths:
+      - "supabase/functions/**"
+      - "supabase/config.toml"
+      - ".github/workflows/supabase-functions-ci.yml"
+
+jobs:
+  verify-functions:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: latest
+
+      - name: Typecheck Edge Functions
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r file; do
+            echo "Checking $file"
+            deno check "$file"
+          done < <(find supabase/functions -mindepth 2 -maxdepth 2 -name index.ts -type f | sort)
+
