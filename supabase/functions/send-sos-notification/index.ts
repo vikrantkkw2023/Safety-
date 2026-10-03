@@ -30,26 +30,31 @@ export default {
 
       const { data: contacts, error: contactsError } = await ctx.supabaseAdmin
         .from("emergency_contacts")
-        .select("id,name,phone")
+        .select("id,name,phone,linked_user_id")
         .eq("user_id", authData.user.id);
 
       if (contactsError) throw contactsError;
       if (!contacts?.length) return Response.json({ ok: true, sent: 0 });
 
-      const phones = [...new Set(contacts.map((c) => c.phone).filter(Boolean))];
-      const { data: recipientProfiles, error: profilesError } = await ctx.supabaseAdmin
-        .from("profiles")
-        .select("id,name,phone")
-        .in("phone", phones);
+      const recipientIds = [...new Set(
+        (contacts ?? [])
+          .map((contact) => contact.linked_user_id)
+          .filter((id): id is string => typeof id === "string" && id !== authData.user.id),
+      )];
 
-      if (profilesError) throw profilesError;
-      if (!recipientProfiles?.length) return Response.json({ ok: true, sent: 0 });
+      if (!recipientIds.length) return Response.json({ ok: true, sent: 0, skipped: 0 });
 
-      const recipientIds = recipientProfiles
-        .map((p) => p.id)
-        .filter((id) => id !== authData.user.id);
-
-      if (!recipientIds.length) return Response.json({ ok: true, sent: 0 });
+      const grantExpiry = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+      const grantRows = recipientIds.map((recipientUserId) => ({
+        incident_id: incident.id,
+        recipient_user_id: recipientUserId,
+        expires_at: grantExpiry,
+        revoked_at: null,
+      }));
+      const { error: grantError } = await ctx.supabaseAdmin
+        .from("incident_access_grants")
+        .upsert(grantRows, { onConflict: "incident_id,recipient_user_id" });
+      if (grantError) throw grantError;
 
       const { data: devices, error: devicesError } = await ctx.supabaseAdmin
         .from("notification_devices")
