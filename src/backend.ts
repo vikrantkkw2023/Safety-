@@ -82,6 +82,49 @@ export async function upsertProfile(userId: string, profile: Omit<ProfileRecord,
   return data as ProfileRecord;
 }
 
+export type NotificationDeviceRecord = {
+  id: string;
+  user_id: string;
+  expo_push_token: string;
+  platform: "ios" | "android";
+  created_at: string;
+  updated_at: string;
+};
+
+export async function upsertNotificationDevice(
+  userId: string,
+  device: Pick<NotificationDeviceRecord, "expo_push_token" | "platform">,
+) {
+  const client = configuredClient();
+  const { data, error } = await client
+    .from("notification_devices")
+    .upsert(
+      {
+        user_id: userId,
+        expo_push_token: device.expo_push_token,
+        platform: device.platform,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id,expo_push_token" },
+    )
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as NotificationDeviceRecord;
+}
+
+export async function removeNotificationDevice(userId: string, expoPushToken: string) {
+  const client = configuredClient();
+  const { error } = await client
+    .from("notification_devices")
+    .delete()
+    .eq("user_id", userId)
+    .eq("expo_push_token", expoPushToken);
+
+  if (error) throw error;
+}
+
 export async function listContacts(userId: string) {
   const client = configuredClient();
   const { data, error } = await client
