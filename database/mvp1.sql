@@ -135,6 +135,37 @@ alter table public.notification_devices
   add constraint notification_devices_token_length
   check (char_length(expo_push_token) between 10 and 512);
 
+-- Delivery audit trail for server-side SOS push notifications.
+create table if not exists public.notification_deliveries (
+  id uuid primary key default gen_random_uuid(),
+  incident_id uuid not null references public.emergency_incidents(id) on delete cascade,
+  device_id uuid not null references public.notification_devices(id) on delete cascade,
+  status text not null check (status in ('SENT','FAILED')),
+  provider_ticket_id text,
+  error_message text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create unique index if not exists notification_deliveries_incident_device_idx
+  on public.notification_deliveries(incident_id, device_id);
+
+create index if not exists notification_deliveries_incident_idx
+  on public.notification_deliveries(incident_id);
+
+alter table public.notification_deliveries enable row level security;
+
+create policy "notification delivery owner read"
+  on public.notification_deliveries for select
+  using (
+    exists (
+      select 1
+      from public.emergency_incidents i
+      where i.id = notification_deliveries.incident_id
+        and i.user_id = auth.uid()
+    )
+  );
+
 
 create table if not exists public.incident_audio_evidence (
   id uuid primary key default gen_random_uuid(),
