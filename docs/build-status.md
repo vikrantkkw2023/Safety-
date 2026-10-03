@@ -1,4 +1,4 @@
-# MVP 1 Build Status
+# Safety Build Status
 
 ## Implemented in the mobile client
 
@@ -9,77 +9,53 @@
 - [x] Local trusted-contact management
 - [x] Local active-incident persistence
 - [x] Emergency location link
-- [x] SMS handoff to the device's messaging interface
+- [x] SMS handoff to the device messaging interface
 - [x] Trusted-contact calling
 - [x] Active emergency screen
 - [x] End emergency
 - [x] Basic accessibility labels
-- [x] Failure messages for GPS/SMS limitations
-- [x] Country-required signup UI (local testing profile)
+- [x] GPS/SMS failure handling
+- [x] Country-required local profile signup
+- [x] Full country names in the country selector
 - [x] Automatic country calling code
 - [x] Country-aware phone validation and E.164 normalization
 
-## Connected backend preparation
+## Backend foundation and synchronization
 
-- [x] Supabase-compatible schema
-- [x] Row-level security policies
-- [x] Environment-variable template
-- [x] Production build configuration
+- [x] Supabase-compatible schema and RLS policies
+- [x] Supabase JS client with persisted mobile sessions
+- [x] Typed profile/contact/incident data access
+- [x] Persistent sync queue
+- [x] Profile, contact and incident queue handling
+- [x] Backend active-incident recovery
+- [x] Backend contact recovery/merge
+- [x] Local profile/contact synchronization when a Supabase session exists
+- [x] Idempotent incident synchronization using client_local_id
+- [x] Automated CI workflow for typecheck and unit tests
 
-## Not yet connected
+## Still required before production
 
-- [ ] Supabase Auth in the mobile client
-- [ ] Persist signup profile to Supabase
-- [ ] Server-side incident creation
-- [ ] Server-side trusted contacts
-- [ ] Push notification delivery
+- [ ] Supabase Auth UI (email/password sign-up and sign-in)
+- [ ] Email verification and password recovery UX
+- [ ] Real Supabase project credentials/configuration
+- [ ] Production push notification provider/server function
+- [ ] Device push-token registration
 - [ ] Secure recipient location page
 - [ ] Background/live location
-- [ ] Automated tests
 - [ ] Crash monitoring
-- [ ] Privacy policy / consent UX
-- [ ] Security review
-
-The current client remains usable without a backend. Do not represent the local MVP as guaranteed emergency dispatch.
-
+- [ ] Privacy policy and consent UX
+- [ ] Security/privacy review
+- [ ] Real Android/iOS device testing
+- [ ] CI run verification after the latest changes
 
 ## Emergency-number testing policy
-- [x] No real emergency-service number is embedded in the app.
-- [x] Test-only placeholder is intentionally invalid: +00 000 000 0000
-- [ ] Replace with an authorized production emergency integration only after end-to-end testing and approval.
 
+- [x] No real emergency-service number is embedded in the test app.
+- [x] Test-only placeholder is intentionally invalid.
+- [ ] Any production emergency-service integration requires authorization and end-to-end approval.
 
-### Backend integration foundation
-- [x] Supabase JS client dependency added
-- [x] Optional Supabase client module added
-- [x] Mobile client refuses to require backend configuration at startup
-- [ ] Supabase project credentials configured by owner
-- [ ] Supabase Auth signup/sign-in connected
-- [ ] Profile/contact/incident sync connected
+The local MVP must never be represented as guaranteed police, ambulance, or emergency dispatch.
 
+## Important verification rule
 
-### Backend data-access layer
-- [x] Typed Supabase authentication helpers
-- [x] Profile upsert helper
-- [x] Trusted-contact read helper
-- [x] SOS incident creation helper
-- [ ] Connect these helpers to the mobile UI
-- [ ] Add production authentication UX and account recovery
-
-
-### Reliability layer
-- [x] Persistent sync-queue primitives with validation and a 50-item bound
-- [x] Backend active-incident recovery query
-- [x] Backend profile recovery query
-- [ ] Wire queue persistence into App.tsx
-- [ ] Wire backend synchronization into App.tsx
-
-
-### Authentication foundation
-- [x] Email/password input validation
-- [x] Supabase signup helper with optional email redirect
-- [x] Supabase session recovery helper
-- [x] Supabase auth-state subscription helper
-- [ ] Add production login/signup UI
-- [ ] Verify email flow on a real Supabase project
-- [ ] Connect authenticated session to mobile profile
+Code changes are committed to the repository, but a feature is not considered verified until typecheck/tests and real-device behavior have actually been observed. No passing test result is claimed here unless GitHub Actions or a real device provides that result.
