@@ -9,7 +9,8 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Safety uses your location when you activate SOS so your trusted contacts can find you."
+        "NSLocationWhenInUseUsageDescription": "Safety uses your location when you activate SOS so your trusted contacts can find you.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Safety uses your location in the background only during an active SOS so your trusted contacts can find you."
       }
     },
     "android": {
@@ -24,7 +25,7 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "Safety uses your location when you activate SOS so your trusted contacts can find you.",
-          "locationAlwaysAndWhenInUsePermission": "Safety uses your location during an active SOS so your trusted contacts can follow your emergency location.",
+          "locationAlwaysAndWhenInUsePermission": "Safety uses your location in the background only during an active SOS so your trusted contacts can find you.",
           "isIosBackgroundLocationEnabled": true,
           "isAndroidBackgroundLocationEnabled": true,
           "isAndroidForegroundServiceEnabled": true
