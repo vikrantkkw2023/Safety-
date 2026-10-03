@@ -1,4 +1,4 @@
-import { createContact, createIncident, findContactByPhone, findIncidentByLocalId, getSession, updateIncidentStatus, upsertProfile } from "./backend";
+import { createContact, createIncident, deleteContactByPhone, findContactByPhone, findIncidentByLocalId, getSession, updateIncidentStatus, upsertProfile } from "./backend";
 import { loadSyncQueue, saveSyncQueue } from "./queueStorage";
 import { removeOperation, type SyncOperation } from "./syncQueue";
 
@@ -34,6 +34,10 @@ export async function retryPendingSync(): Promise<{ remaining: number; synced: n
             country_code: operation.payload.country_code || null,
           });
         }
+      } else if (operation.type === "CONTACT_DELETE") {
+        const phone = operation.payload.phone;
+        if (!phone) throw new Error("INVALID_CONTACT_DELETE_PAYLOAD");
+        await deleteContactByPhone(session.user.id, phone);
       } else if (operation.type === "INCIDENT_CREATE") {
         const localId = operation.payload.local_id;
         if (!localId) throw new Error("MISSING_LOCAL_INCIDENT_ID");
