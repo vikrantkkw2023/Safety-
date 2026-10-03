@@ -334,3 +334,25 @@ export async function updateAudioEvidenceStatus(
   if (error) throw error;
   return data;
 }
+
+
+export async function uploadAudioEvidence(
+  userId: string,
+  storagePath: string,
+  localUri: string,
+) {
+  const client = configuredClient();
+  const response = await fetch(localUri);
+  if (!response.ok) throw new Error("AUDIO_FILE_READ_FAILED");
+  const blob = await response.blob();
+
+  const { error } = await client.storage
+    .from("safety-audio")
+    .upload(storagePath, blob, {
+      contentType: "audio/m4a",
+      upsert: false,
+    });
+
+  if (error) throw error;
+  return storagePath;
+}
