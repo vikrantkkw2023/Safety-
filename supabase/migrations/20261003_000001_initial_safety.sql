@@ -671,3 +671,9 @@ end;
 $$;
 
 revoke all on function public.redeem_contact_link_invitation(text, uuid) from public, anon, authenticated;
+
+
+-- Notification receipt audit fields.
+alter table public.notification_deliveries
+  add column if not exists receipt_checked_at timestamptz,
+  add column if not exists receipt_error text;
