@@ -43,13 +43,20 @@ export async function retryPendingSync(): Promise<{ remaining: number; synced: n
         if (typeof localId !== "string" || !localId) throw new Error("MISSING_LOCAL_INCIDENT_ID");
         const existing = await findIncidentByLocalId(session.user.id, localId);
         if (!existing) {
-          await createIncident(session.user.id, {
+          const created = await createIncident(session.user.id, {
             client_local_id: localId,
             latitude: Number(operation.payload.latitude),
             longitude: Number(operation.payload.longitude),
             accuracy: operation.payload.accuracy == null ? null : Number(operation.payload.accuracy),
             started_at: typeof operation.payload.started_at === "string" ? operation.payload.started_at : String(operation.payload.started_at),
           });
+          if (operation.payload.status === "ACTIVE") {
+            try {
+              await import("./liveLocation").then(({ startLiveLocation }) => startLiveLocation(created.id));
+            } catch (locationError) {
+              console.error("Recovered live location could not start", locationError);
+            }
+          }
         }
       } else if (operation.type === "INCIDENT_STATUS") {
         const localId = operation.payload.incident_id;
