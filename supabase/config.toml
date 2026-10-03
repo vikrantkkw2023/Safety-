@@ -5,9 +5,6 @@
 [functions.create-contact-link-invitation]
 verify_jwt = true
 
-[functions.create-incident-access-token]
-verify_jwt = true
-
 [functions.get-incident-view]
 verify_jwt = true
 
