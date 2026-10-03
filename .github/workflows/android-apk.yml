@@ -15,10 +15,11 @@ on:
 
 jobs:
   build-android:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       actions: read
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -30,6 +31,12 @@ jobs:
         with:
           node-version: 22.13.0
 
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
       - name: Install dependencies
         run: npm install
 
@@ -38,34 +45,24 @@ jobs:
           npx expo config --type public
           npx expo-doctor
 
-      - name: Build Android APK with EAS
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "$EXPO_TOKEN"
-          npx eas-cli@latest init --force --non-interactive
-          npx eas-cli@latest build \
-            --platform android \
-            --profile preview \
-            --non-interactive \
-            --wait \
-            --json > eas-build.json
+      - name: Generate Android native project
+        run: npx expo prebuild --clean --no-install --non-interactive --platform android
 
-      - name: Download built APK
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      - name: Build Android debug APK
         shell: bash
         run: |
           set -euo pipefail
-          BUILD_ID="$(node -e 'const fs=require("fs"); const raw=fs.readFileSync("eas-build.json","utf8"); const data=JSON.parse(raw); const build=Array.isArray(data) ? data[0] : data; if(!build?.id) process.exit(2); process.stdout.write(build.id)')"
-          npx eas-cli@latest build:download \
-            --build-id "$BUILD_ID" \
-            --non-interactive
-          APK="$(find . -maxdepth 2 -type f -name "*.apk" | head -n 1)"
-          test -n "$APK"
-          cp "$APK" Safety-test.apk
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+          cp app/build/outputs/apk/debug/app-debug.apk ../Safety-test.apk
+
+      - name: Verify APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s Safety-test.apk
+          ls -lh Safety-test.apk
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
