@@ -11,7 +11,8 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Safety uses your location when you activate SOS so your trusted contacts can find you.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Safety uses your location in the background only during an active SOS so your trusted contacts can find you."
-      }
+      },
+      "bundleIdentifier": "com.safety.emergency"
     },
     "android": {
       "permissions": [
