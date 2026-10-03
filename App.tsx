@@ -634,14 +634,14 @@ export default function App() {
 
       // Local activation is authoritative for the user experience; backend sync is best-effort.
       try {
-        await persistAndSyncIncident(incident);
+        const syncResult = await persistAndSyncIncident(incident);
       } catch (syncError) {
         console.error("Incident backend sync failed", syncError);
       }
 
       // Server-side push notification is best-effort. The local SOS remains active if
       // authentication, internet, or the push provider is unavailable.
-      if (isSupabaseConfigured) {
+      if (isSupabaseConfigured && syncResult.synced) {
         try {
           await notifyActiveIncident(incident.id);
         } catch (notificationError) {
