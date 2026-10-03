@@ -18,8 +18,8 @@ export default {
       const { data: incident } = await ctx.supabaseAdmin.from("emergency_incidents").select("id,status,user_id").eq("id", incidentId).eq("user_id", ownerId).eq("status","ACTIVE").maybeSingle();
       if (!incident) return Response.json({ error: "ACTIVE_INCIDENT_NOT_FOUND" }, { status: 404 });
       const { data: contacts } = await ctx.supabaseAdmin.from("emergency_contacts").select("phone").eq("user_id", ownerId);
-      const { data: recipient } = await ctx.supabaseAdmin.from("profiles").select("id,phone").eq("id", recipientUserId).maybeSingle();
-      if (!recipient || !contacts?.some((c) => c.phone === recipient.phone))
+      const trusted = contacts?.some((c) => c.linked_user_id === recipientUserId);
+      if (!trusted)
         return Response.json({ error: "RECIPIENT_NOT_TRUSTED_CONTACT" }, { status: 403 });
       const { error } = await ctx.supabaseAdmin.from("incident_access_grants").upsert({incident_id:incidentId,recipient_user_id:recipientUserId,expires_at:expiry.toISOString(),revoked_at:null},{onConflict:"incident_id,recipient_user_id"});
       if (error) throw error;
