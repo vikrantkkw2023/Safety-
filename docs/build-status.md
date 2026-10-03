@@ -32,6 +32,8 @@
 - [x] Local profile/contact synchronization when a Supabase session exists
 - [x] Idempotent incident synchronization using client_local_id
 - [x] Automated CI workflow for typecheck and unit tests
+- [x] Notification device registration backend boundary
+- [x] Notification registration helper without privileged credentials
 
 ## Still required before production
 
@@ -39,6 +41,7 @@
 - [ ] Email verification and password recovery UX
 - [ ] Real Supabase project credentials/configuration
 - [ ] Production push notification provider/server function
+- [ ] Install and configure the selected push provider SDK
 - [ ] Device push-token registration
 - [ ] Secure recipient location page
 - [ ] Background/live location
