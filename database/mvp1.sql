@@ -193,3 +193,30 @@ create policy "audio upload owner read"
         and i.user_id = auth.uid()
     )
   );
+
+
+-- Private audio evidence storage bucket.
+insert into storage.buckets (id, name, public)
+values ('safety-audio', 'safety-audio', false)
+on conflict (id) do update set public = false;
+
+create policy "audio owner upload"
+  on storage.objects for insert
+  with check (
+    bucket_id = 'safety-audio'
+    and auth.uid() is not null
+  );
+
+create policy "audio owner read"
+  on storage.objects for select
+  using (
+    bucket_id = 'safety-audio'
+    and auth.uid() is not null
+  );
+
+create policy "audio owner delete"
+  on storage.objects for delete
+  using (
+    bucket_id = 'safety-audio'
+    and auth.uid() is not null
+  );
