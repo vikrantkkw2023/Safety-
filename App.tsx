@@ -23,7 +23,7 @@ import { getCountries, getCountryCallingCode } from "libphonenumber-js";
 import { isDuplicatePhone, isValidActiveIncident, isValidPhone, normalizePhone, validateCountryPhone, validateInternationalPhone } from "./src/safetyRules";
 import { persistAndSyncIncident, endAndSyncIncident } from "./src/sosCoordinator";
 import { initializeBackendSync, recoverBackendContacts } from "./src/appSync";
-import { createEmailAccount, getActiveIncident, getCurrentUser, resetEmailPassword, signInEmailAccount, signOutAccount, getGrantedIncident, notifyActiveIncident, createContactLinkInvitation, redeemContactLinkInvitation } from "./src/backend";
+import { createEmailAccount, getActiveIncident, getCurrentUser, resetEmailPassword, signInEmailAccount, signOutAccount, getGrantedIncident, acknowledgeIncident, notifyActiveIncident, createContactLinkInvitation, redeemContactLinkInvitation } from "./src/backend";
 import { mergeContacts } from "./src/contactMerge";
 import { syncContactWithFallback } from "./src/contactSync";
 import { syncProfileWithFallback } from "./src/profileSync";
@@ -1214,6 +1214,32 @@ export default function App() {
           >
             <Text style={styles.primaryButtonText}>Open location in Maps</Text>
           </TouchableOpacity>
+          {recipientView.incident.status === "ACTIVE" && !recipientView.acknowledgement && (
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={async () => {
+                try {
+                  const acknowledgement = await acknowledgeIncident(recipientView.incident.id);
+                  setRecipientView({
+                    ...recipientView,
+                    acknowledgement: { acknowledged_at: acknowledgement.acknowledged_at },
+                    acknowledgement_count: (recipientView.acknowledgement_count ?? 0) + 1,
+                  });
+                  Alert.alert("Acknowledged", "Your trusted contact has been notified that you saw this SOS.");
+                } catch (error) {
+                  console.error("SOS acknowledgement failed", error);
+                  Alert.alert("Acknowledgement failed", "Your access may have expired. Please refresh the emergency view.");
+                }
+              }}
+            >
+              <Text style={styles.secondaryButtonText}>ACKNOWLEDGE SOS</Text>
+            </TouchableOpacity>
+          )}
+          {recipientView.acknowledgement && (
+            <Text style={styles.smallText}>
+              You acknowledged this SOS at {new Date(recipientView.acknowledgement.acknowledged_at).toLocaleTimeString()}.
+            </Text>
+          )}
           <TouchableOpacity style={styles.secondaryButton} onPress={() => setScreen("home")}>
             <Text style={styles.secondaryButtonText}>Close</Text>
           </TouchableOpacity>
