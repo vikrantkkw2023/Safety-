@@ -7,6 +7,9 @@ export default {
       const userId = data.user?.id;
       if (!userId) return Response.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
+      // Legacy direct-link endpoint is intentionally disabled. Use the one-time invitation flow.
+      return Response.json({ error: "INVITATION_REQUIRED" }, { status: 410 });
+      /*
       const body = await req.json().catch(() => null);
       const contactId = body?.contact_id;
       const linkedUserId = body?.linked_user_id;
@@ -45,6 +48,7 @@ export default {
 
       if (error) throw error;
       return Response.json({ ok: true, contact_id: contact.id, linked_user_id: linkedUserId });
+      */
     } catch (error) {
       console.error("link-trusted-contact failed", error);
       return Response.json({ error: "LINK_FAILED" }, { status: 500 });
