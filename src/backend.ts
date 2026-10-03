@@ -187,6 +187,17 @@ export async function findContactByPhone(userId: string, phone: string) {
   return (data ?? null) as ContactRecord | null;
 }
 
+export async function deleteContactByPhone(userId: string, phone: string) {
+  const client = configuredClient();
+  const { error } = await client
+    .from("emergency_contacts")
+    .delete()
+    .eq("user_id", userId)
+    .eq("phone", phone);
+
+  if (error) throw error;
+}
+
 export async function createContact(
   userId: string,
   contact: Omit<ContactRecord, "id" | "user_id">
