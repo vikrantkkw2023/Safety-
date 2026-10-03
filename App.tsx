@@ -33,6 +33,7 @@ import { createAudioEvidence, uploadAudioEvidence, updateAudioEvidenceStatus } f
 import { startLiveLocation, stopLiveLocation } from "./src/liveLocation";
 import { loadSyncQueue, saveSyncQueue } from "./src/queueStorage";
 import { enqueueOperation } from "./src/syncQueue";
+import { enqueuePendingAudioEvidence, loadPendingAudioEvidence, removePendingAudioEvidence, savePendingAudioEvidence } from "./src/audioEvidenceQueue";
 import { isSupabaseConfigured, supabase } from "./src/supabase";
 import { normalizeEmail, validateEmail, validatePassword } from "./src/authRules";
 
@@ -186,6 +187,7 @@ export default function App() {
       try {
         await initializeBackendSync();
         await registerNotificationDevice();
+        await retryPendingAudioEvidence();
         const pendingToken = await AsyncStorage.getItem("safety.pendingContactInvite.v1");
         if (pendingToken) await redeemInvitationToken(pendingToken);
         const pendingIncidentId = await AsyncStorage.getItem("safety.pendingIncidentView.v1");
@@ -326,6 +328,7 @@ export default function App() {
         // Retry previously queued backend work and recover server-side contacts/incidents.
         try {
           await initializeBackendSync();
+          await retryPendingAudioEvidence();
           const remoteContacts = await recoverBackendContacts();
           if (remoteContacts && mounted) {
             setContacts((current) => mergeContacts(current, remoteContacts));
@@ -852,6 +855,22 @@ export default function App() {
                 } catch (statusError) {
                   console.error("Audio evidence failure status update failed", statusError);
                 }
+
+                try {
+                  await enqueuePendingAudioEvidence({
+                    id: evidenceId ?? storagePath,
+                    incidentId: activeIncident.remoteId,
+                    storagePath,
+                    localUri: recordedAudioUri,
+                    startedAt: audioStartedAtRef.current,
+                    endedAt: endedAt,
+                    evidenceId: evidenceId ?? undefined,
+                    attempts: 1,
+                    createdAt: new Date().toISOString(),
+                  });
+                } catch (queueError) {
+                  console.error("Audio evidence queue save failed", queueError);
+                }
               }
             }
             // Clear the local active state immediately; backend resolution is best-effort and queued on failure.
@@ -870,6 +889,50 @@ export default function App() {
         },
       },
     ]);
+  };
+
+  const retryPendingAudioEvidence = async () => {
+    if (!supabase) return;
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.id) return;
+
+    const pending = await loadPendingAudioEvidence();
+    if (!pending.length) return;
+
+    const remaining = [...pending];
+    for (const item of pending) {
+      try {
+        let evidenceId = item.evidenceId;
+        if (!evidenceId) {
+          const evidence = await createAudioEvidence(currentUser.id, {
+            incident_id: item.incidentId,
+            storage_path: item.storagePath,
+            started_at: item.startedAt,
+            ended_at: item.endedAt,
+            status: "LOCAL_PENDING_UPLOAD",
+          });
+          evidenceId = evidence.id;
+        }
+
+        await uploadAudioEvidence(currentUser.id, item.storagePath, item.localUri);
+        await updateAudioEvidenceStatus(currentUser.id, evidenceId, "UPLOADED");
+        await removePendingAudioEvidence(item.id);
+        const index = remaining.findIndex((candidate) => candidate.id === item.id);
+        if (index >= 0) remaining.splice(index, 1);
+      } catch (error) {
+        console.error("Pending audio evidence retry failed", error);
+        const index = remaining.findIndex((candidate) => candidate.id === item.id);
+        if (index >= 0) {
+          remaining[index] = {
+            ...remaining[index],
+            evidenceId: item.evidenceId,
+            attempts: item.attempts + 1,
+          };
+        }
+      }
+    }
+
+    await savePendingAudioEvidence(remaining);
   };
 
   const loadIncidentHistory = async () => {
