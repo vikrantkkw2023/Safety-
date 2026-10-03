@@ -861,9 +861,16 @@ export default function App() {
         <Text style={styles.brand}>SAFETY</Text>
         <Text style={styles.subtitle}>Emergency assistance</Text>
       </View>
-      <TouchableOpacity style={styles.contactsButton} onPress={() => setScreen("contacts")}>
-        <Text style={styles.contactsButtonText}>Contacts</Text>
-      </TouchableOpacity>
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        <TouchableOpacity style={styles.contactsButton} onPress={() => setScreen("contacts")}>
+          <Text style={styles.contactsButtonText}>Contacts</Text>
+        </TouchableOpacity>
+        {profile && (
+          <TouchableOpacity style={styles.contactsButton} onPress={() => setScreen("about")}>
+            <Text style={styles.contactsButtonText}>Account</Text>
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 
@@ -1001,6 +1008,44 @@ export default function App() {
             </ScrollView>
           </SafeAreaView>
         </Modal>
+      </SafeAreaView>
+    );
+  }
+
+  if (screen === "about" && profile) {
+    const signOut = async () => {
+      if (activeIncident) {
+        Alert.alert("SOS is active", "End the emergency before signing out.");
+        return;
+      }
+      try {
+        await signOutAccount();
+        await AsyncStorage.removeItem(PROFILE_KEY);
+        setProfile(null);
+        setScreen("signup");
+      } catch (error) {
+        console.error("Sign out failed", error);
+        Alert.alert("Sign out failed", "Please try again.");
+      }
+    };
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" />
+        <ScrollView contentContainerStyle={styles.content}>
+          <Text style={styles.title}>Account</Text>
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>{profile.name}</Text>
+            <Text style={styles.smallText}>{countryName(profile.country)} · {profile.phone}</Text>
+          </View>
+          {isSupabaseConfigured && (
+            <TouchableOpacity style={styles.secondaryButton} onPress={() => void signOut()}>
+              <Text style={styles.secondaryButtonText}>Sign out</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={styles.secondaryButton} onPress={() => setScreen("home")}>
+            <Text style={styles.secondaryButtonText}>Back to Safety</Text>
+          </TouchableOpacity>
+        </ScrollView>
       </SafeAreaView>
     );
   }
