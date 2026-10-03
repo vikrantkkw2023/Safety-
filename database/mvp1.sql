@@ -382,3 +382,69 @@ create policy "incident access tokens owner only"
         and i.user_id = auth.uid()
     )
   );
+
+
+-- Atomic trusted-contact invitation redemption.
+-- The invitation claim and contact link occur in one database transaction.
+create or replace function public.redeem_contact_link_invitation(
+  p_token_hash text,
+  p_recipient_user_id uuid
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_invitation public.contact_link_invitations%rowtype;
+  v_contact public.emergency_contacts%rowtype;
+  v_recipient_phone text;
+begin
+  select *
+    into v_invitation
+  from public.contact_link_invitations
+  where token_hash = p_token_hash
+    and consumed_at is null
+    and expires_at > now()
+  for update;
+
+  if not found then
+    raise exception 'INVITATION_INVALID_OR_EXPIRED';
+  end if;
+
+  if v_invitation.owner_user_id = p_recipient_user_id then
+    raise exception 'SELF_LINK_NOT_ALLOWED';
+  end if;
+
+  select phone into v_recipient_phone
+  from public.profiles
+  where id = p_recipient_user_id;
+
+  select *
+    into v_contact
+  from public.emergency_contacts
+  where id = v_invitation.contact_id
+    and user_id = v_invitation.owner_user_id
+  for update;
+
+  if not found or v_contact.linked_user_id is not null then
+    raise exception 'CONTACT_LINK_UNAVAILABLE';
+  end if;
+
+  if v_recipient_phone is null or v_recipient_phone <> v_contact.phone then
+    raise exception 'PHONE_MISMATCH';
+  end if;
+
+  update public.emergency_contacts
+    set linked_user_id = p_recipient_user_id
+    where id = v_contact.id;
+
+  update public.contact_link_invitations
+    set consumed_at = now()
+    where id = v_invitation.id;
+
+  return v_contact.id;
+end;
+$$;
+
+revoke all on function public.redeem_contact_link_invitation(text, uuid) from public, anon, authenticated;
