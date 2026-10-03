@@ -156,6 +156,23 @@ export default function App() {
     let active = true;
     let lastState = AppState.currentState;
 
+    const handleAuthChange = async () => {
+      if (!active) return;
+      try {
+        await registerNotificationDevice();
+        const pendingToken = await AsyncStorage.getItem("safety.pendingContactInvite.v1");
+        if (pendingToken) await redeemInvitationToken(pendingToken);
+      } catch (error) {
+        console.error("Post-auth notification/invitation sync failed", error);
+      }
+    };
+
+    const authSubscription = onAuthStateChange((event) => {
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") {
+        void handleAuthChange();
+      }
+    });
+
     const syncAfterAuth = async () => {
       if (!active || !(await getCurrentUser())?.id) return;
       try {
@@ -190,6 +207,7 @@ export default function App() {
     void register();
     return () => {
       active = false;
+      authSubscription.data.subscription.unsubscribe();
       subscription.remove();
     };
   }, []);
