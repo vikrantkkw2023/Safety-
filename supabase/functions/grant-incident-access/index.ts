@@ -17,7 +17,7 @@ export default {
         return Response.json({ error: "INVALID_EXPIRY" }, { status: 400 });
       const { data: incident } = await ctx.supabaseAdmin.from("emergency_incidents").select("id,status,user_id").eq("id", incidentId).eq("user_id", ownerId).eq("status","ACTIVE").maybeSingle();
       if (!incident) return Response.json({ error: "ACTIVE_INCIDENT_NOT_FOUND" }, { status: 404 });
-      const { data: contacts } = await ctx.supabaseAdmin.from("emergency_contacts").select("phone").eq("user_id", ownerId);
+      const { data: contacts } = await ctx.supabaseAdmin.from("emergency_contacts").select("phone,linked_user_id").eq("user_id", ownerId);
       const trusted = contacts?.some((c) => c.linked_user_id === recipientUserId);
       if (!trusted)
         return Response.json({ error: "RECIPIENT_NOT_TRUSTED_CONTACT" }, { status: 403 });
