@@ -31,6 +31,8 @@ import { onAuthStateChange } from "./src/backend";
 import { registerNotificationDevice } from "./src/notificationRegistration";
 import { createAudioEvidence, uploadAudioEvidence, updateAudioEvidenceStatus } from "./src/backend";
 import { startLiveLocation, stopLiveLocation } from "./src/liveLocation";
+import { loadSyncQueue, saveSyncQueue } from "./src/queueStorage";
+import { enqueueOperation } from "./src/syncQueue";
 import { isSupabaseConfigured, supabase } from "./src/supabase";
 import { normalizeEmail, validateEmail, validatePassword } from "./src/authRules";
 
@@ -545,11 +547,13 @@ export default function App() {
                 await deleteContactByPhone(currentUser.id, contact.phone);
                 return;
               }
-              const raw = await AsyncStorage.getItem("safety.syncQueue.v1");
-              const queue = raw ? JSON.parse(raw) : [];
-              const next = Array.isArray(queue) ? queue : [];
-              next.push({ type: "CONTACT_DELETE", payload: { phone: contact.phone } });
-              await AsyncStorage.setItem("safety.syncQueue.v1", JSON.stringify(next.slice(-50)));
+              const queue = await loadSyncQueue();
+              await saveSyncQueue(
+                enqueueOperation(queue, {
+                  type: "CONTACT_DELETE",
+                  payload: { phone: contact.phone },
+                }),
+              );
             } catch (error) {
               console.error("Contact backend deletion failed", error);
               try {
