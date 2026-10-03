@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import * as Location from "expo-location";
 import * as SMS from "expo-sms";
+import { AudioModule, RecordingPresets, setAudioModeAsync, useAudioRecorder } from "expo-audio";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getCountries, getCountryCallingCode } from "libphonenumber-js";
 import { isDuplicatePhone, isValidActiveIncident, isValidPhone, normalizePhone, validateCountryPhone } from "./src/safetyRules";
@@ -78,6 +79,8 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [storageReady, setStorageReady] = useState(false);
   const sosInFlightRef = useRef(false);
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const audioRecordingRef = useRef(false);
 
   useEffect(() => {
     let mounted = true;
@@ -358,6 +361,42 @@ export default function App() {
     ]);
   };
 
+  const startSOSAudio = async () => {
+    if (audioRecordingRef.current) return;
+    try {
+      const permission = await AudioModule.requestRecordingPermissionsAsync();
+      if (!permission.granted) {
+        console.warn("Microphone permission denied; SOS continues without audio evidence.");
+        return;
+      }
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        allowsRecording: true,
+        allowsBackgroundRecording: true,
+      });
+      await audioRecorder.prepareToRecordAsync();
+      audioRecorder.record();
+      audioRecordingRef.current = true;
+    } catch (error) {
+      console.error("SOS audio recording could not start", error);
+      audioRecordingRef.current = false;
+    }
+  };
+
+  const stopSOSAudio = async () => {
+    if (!audioRecordingRef.current) return null;
+    try {
+      await audioRecorder.stop();
+      const uri = audioRecorder.uri ?? null;
+      audioRecordingRef.current = false;
+      return uri;
+    } catch (error) {
+      console.error("SOS audio recording could not stop", error);
+      audioRecordingRef.current = false;
+      return null;
+    }
+  };
+
   const beginSOS = () => {
     if (!storageReady) {
       Alert.alert("Please wait", "Safety is still loading your saved data.");
@@ -444,6 +483,7 @@ export default function App() {
 
       await AsyncStorage.setItem(INCIDENT_KEY, JSON.stringify(incident));
       setActiveIncident(incident);
+      void startSOSAudio();
 
       // Local activation is authoritative for the user experience; backend sync is best-effort.
       try {
