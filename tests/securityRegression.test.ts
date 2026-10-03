@@ -87,3 +87,11 @@ test("Expo release config has both native application identifiers", async () => 
   assert.equal(app.expo.ios.bundleIdentifier, "com.safety.emergency");
   assert.equal(app.expo.scheme, "safety");
 });
+
+
+test("EAS configuration uses remote versioning and a modern CLI baseline", async () => {
+  const eas = JSON.parse(await read("eas.json"));
+  assert.equal(eas.cli.appVersionSource, "remote");
+  assert.match(eas.cli.version, /^>= 16\.18\.0$/);
+  assert.equal(eas.build.production.autoIncrement, true);
+});
