@@ -20,13 +20,14 @@ export default {
       if (!ownerId) return Response.json({ error: "UNAUTHORIZED" }, { status: 401 });
       const body = await req.json().catch(() => null);
       const contactId = body?.contact_id;
-      if (typeof contactId !== "string") return Response.json({ error: "INVALID_CONTACT" }, { status: 400 });
+      const phone = body?.phone;
+      if (typeof contactId !== "string" && typeof phone !== "string") return Response.json({ error: "INVALID_CONTACT" }, { status: 400 });
 
       const { data: contact } = await ctx.supabaseAdmin
         .from("emergency_contacts")
         .select("id,user_id,linked_user_id")
-        .eq("id", contactId)
         .eq("user_id", ownerId)
+        .eq(typeof contactId === "string" ? "id" : "phone", typeof contactId === "string" ? contactId : phone)
         .maybeSingle();
 
       if (!contact) return Response.json({ error: "CONTACT_NOT_FOUND" }, { status: 404 });
