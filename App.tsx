@@ -24,6 +24,7 @@ import { mergeContacts } from "./src/contactMerge";
 import { syncContactWithFallback } from "./src/contactSync";
 import { syncProfileWithFallback } from "./src/profileSync";
 import { onAuthStateChange } from "./src/backend";
+import { registerNotificationDevice } from "./src/notificationRegistration";
 import { isSupabaseConfigured } from "./src/supabase";
 import { normalizeEmail, validateEmail, validatePassword } from "./src/authRules";
 
