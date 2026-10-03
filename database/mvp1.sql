@@ -248,6 +248,34 @@ create policy "audio upload owner read"
   );
 
 
+-- Owner-controlled deletion of a resolved incident.
+-- Active incidents cannot be deleted, preserving the emergency lifecycle.
+create or replace function public.delete_resolved_incident(p_incident_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $
+begin
+  if not exists (
+    select 1 from public.emergency_incidents
+    where id = p_incident_id
+      and user_id = auth.uid()
+      and status <> 'ACTIVE'
+  ) then
+    raise exception 'INCIDENT_DELETE_NOT_ALLOWED';
+  end if;
+
+  delete from public.emergency_incidents
+    where id = p_incident_id
+      and user_id = auth.uid()
+      and status <> 'ACTIVE';
+end;
+$;
+
+revoke all on function public.delete_resolved_incident(uuid) from public, anon;
+grant execute on function public.delete_resolved_incident(uuid) to authenticated;
+
 -- Private audio evidence storage bucket.
 insert into storage.buckets (id, name, public)
 values ('safety-audio', 'safety-audio', false)
