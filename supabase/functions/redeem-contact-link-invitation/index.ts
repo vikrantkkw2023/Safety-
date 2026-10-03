@@ -52,22 +52,30 @@ export default {
         return Response.json({ error: "PHONE_MISMATCH" }, { status: 403 });
       }
 
-      const { error: linkError } = await ctx.supabaseAdmin
+      const now = new Date().toISOString();
+      const { data: claimedInvitation, error: consumeError } = await ctx.supabaseAdmin
+        .from("contact_link_invitations")
+        .update({ consumed_at: now })
+        .eq("id", invitation.id)
+        .is("consumed_at", null)
+        .gt("expires_at", now)
+        .select("id")
+        .maybeSingle();
+
+      if (consumeError) throw consumeError;
+      if (!claimedInvitation) return Response.json({ error: "INVITATION_ALREADY_USED" }, { status: 409 });
+
+      const { data: linked, error: linkError } = await ctx.supabaseAdmin
         .from("emergency_contacts")
         .update({ linked_user_id: recipientId })
         .eq("id", contact.id)
         .eq("user_id", invitation.owner_user_id)
-        .is("linked_user_id", null);
+        .is("linked_user_id", null)
+        .select("id")
+        .maybeSingle();
 
       if (linkError) throw linkError;
-
-      const { error: consumeError } = await ctx.supabaseAdmin
-        .from("contact_link_invitations")
-        .update({ consumed_at: new Date().toISOString() })
-        .eq("id", invitation.id)
-        .is("consumed_at", null);
-
-      if (consumeError) throw consumeError;
+      if (!linked) return Response.json({ error: "CONTACT_LINK_UNAVAILABLE" }, { status: 409 });
 
       return Response.json({ ok: true, contact_id: contact.id });
     } catch (error) {
