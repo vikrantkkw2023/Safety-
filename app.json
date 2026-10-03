@@ -39,6 +39,7 @@
           "enableBackgroundRecording": true
         }
       ]
-    ]
+    ],
+    "scheme": "safety"
   }
 }
