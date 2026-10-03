@@ -587,6 +587,7 @@ export default function App() {
               const currentUser = await getCurrentUser();
               if (!currentUser?.id) throw new Error("NO_AUTHENTICATED_USER");
               const storagePath = currentUser.id + "/" + activeIncident.id + "/" + Date.now() + ".m4a";
+              let evidenceId: string | null = null;
               try {
                 const evidence = await createAudioEvidence(activeIncident.id, {
                   incident_id: activeIncident.id,
@@ -595,13 +596,14 @@ export default function App() {
                   ended_at: endedAt,
                   status: "LOCAL_PENDING_UPLOAD",
                 });
+                evidenceId = evidence.id;
                 await uploadAudioEvidence(activeIncident.id, storagePath, recordedAudioUri);
                 await updateAudioEvidenceStatus(activeIncident.id, evidence.id, "UPLOADED");
               } catch (audioError) {
                 console.error("Audio evidence upload failed", audioError);
                 try {
-                  if (typeof evidence !== "undefined") {
-                    await updateAudioEvidenceStatus(activeIncident.id, evidence.id, "FAILED");
+                  if (evidenceId) {
+                    await updateAudioEvidenceStatus(activeIncident.id, evidenceId, "FAILED");
                   }
                 } catch (statusError) {
                   console.error("Audio evidence failure status update failed", statusError);
