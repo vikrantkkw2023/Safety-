@@ -311,6 +311,18 @@ export default function App() {
           const currentUser = await getCurrentUser();
           const remoteActive = currentUser?.id ? await getActiveIncident(currentUser.id) : null;
           if (remoteActive && mounted) {
+            try {
+              await startLiveLocation(remoteActive.id);
+            } catch (locationError) {
+              console.error("Recovered active incident live location could not start", locationError);
+            }
+            if (isSupabaseConfigured) {
+              try {
+                await notifyActiveIncident(remoteActive.id);
+              } catch (notificationError) {
+                console.error("Recovered active incident notification could not be sent", notificationError);
+              }
+            }
             let localIncident: Incident | null = null;
             if (savedIncident) {
               try {
