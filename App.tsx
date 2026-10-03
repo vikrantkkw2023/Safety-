@@ -22,7 +22,7 @@ import { getCountries, getCountryCallingCode } from "libphonenumber-js";
 import { isDuplicatePhone, isValidActiveIncident, isValidPhone, normalizePhone, validateCountryPhone } from "./src/safetyRules";
 import { persistAndSyncIncident, endAndSyncIncident } from "./src/sosCoordinator";
 import { initializeBackendSync, recoverBackendContacts } from "./src/appSync";
-import { createEmailAccount, getActiveIncident, getCurrentUser, resetEmailPassword, signInEmailAccount, signOutAccount, getGrantedIncident, createContactLinkInvitation, redeemContactLinkInvitation } from "./src/backend";
+import { createEmailAccount, getActiveIncident, getCurrentUser, resetEmailPassword, signInEmailAccount, signOutAccount, getGrantedIncident, notifyActiveIncident, createContactLinkInvitation, redeemContactLinkInvitation } from "./src/backend";
 import { mergeContacts } from "./src/contactMerge";
 import { syncContactWithFallback } from "./src/contactSync";
 import { syncProfileWithFallback } from "./src/profileSync";
@@ -637,6 +637,16 @@ export default function App() {
         await persistAndSyncIncident(incident);
       } catch (syncError) {
         console.error("Incident backend sync failed", syncError);
+      }
+
+      // Server-side push notification is best-effort. The local SOS remains active if
+      // authentication, internet, or the push provider is unavailable.
+      if (isSupabaseConfigured) {
+        try {
+          await notifyActiveIncident(incident.id);
+        } catch (notificationError) {
+          console.error("Trusted-contact push notification failed", notificationError);
+        }
       }
 
       // The incident is already active even if the device cannot prepare an SMS.
