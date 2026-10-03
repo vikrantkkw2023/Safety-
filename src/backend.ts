@@ -295,3 +295,42 @@ export function onAuthStateChange(
   }
   return supabase.auth.onAuthStateChange(callback);
 }
+
+
+export async function createAudioEvidence(
+  userId: string,
+  evidence: {
+    incident_id: string;
+    storage_path: string;
+    started_at: string;
+    ended_at: string | null;
+    status: "LOCAL_PENDING_UPLOAD" | "UPLOADED" | "FAILED";
+  },
+) {
+  const client = configuredClient();
+  const { data, error } = await client
+    .from("incident_audio_evidence")
+    .insert(evidence)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function updateAudioEvidenceStatus(
+  userId: string,
+  evidenceId: string,
+  status: "LOCAL_PENDING_UPLOAD" | "UPLOADED" | "FAILED",
+) {
+  const client = configuredClient();
+  const { data, error } = await client
+    .from("incident_audio_evidence")
+    .update({ status })
+    .eq("id", evidenceId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
