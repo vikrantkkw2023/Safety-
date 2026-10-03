@@ -89,6 +89,14 @@ export default function App() {
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     let active = true;
+    let lastState = AppState.currentState;
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      const becameActive = (lastState === "background" || lastState === "inactive") && nextState === "active";
+      lastState = nextState;
+      if (becameActive) {
+        void initializeBackendSync().catch((error) => console.error("Foreground sync retry failed", error));
+      }
+    });
     const register = async () => {
       try {
         const result = await registerNotificationDevice();
@@ -102,6 +110,7 @@ export default function App() {
     void register();
     return () => {
       active = false;
+      subscription.remove();
     };
   }, []);
 
