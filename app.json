@@ -26,7 +26,14 @@
           "locationWhenInUsePermission": "Safety uses your location when you activate SOS so your trusted contacts can find you."
         }
       ],
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Safety uses your microphone only while an active SOS recording is running.",
+          "enableBackgroundRecording": true
+        }
+      ]
     ]
   }
 }
