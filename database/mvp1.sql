@@ -223,6 +223,10 @@ create table if not exists public.notification_deliveries (
 create unique index if not exists notification_deliveries_incident_device_idx
   on public.notification_deliveries(incident_id, device_id);
 
+alter table public.notification_deliveries
+  add column if not exists receipt_checked_at timestamptz,
+  add column if not exists receipt_error text;
+
 create index if not exists notification_deliveries_incident_idx
   on public.notification_deliveries(incident_id);
 
