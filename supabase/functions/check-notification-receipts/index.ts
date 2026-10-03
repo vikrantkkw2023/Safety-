@@ -12,19 +12,15 @@ function json(body: unknown, status = 200) {
 Deno.serve(async (request) => {
   if (request.method !== "POST") return json({ error: "METHOD_NOT_ALLOWED" }, 405);
 
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader?.startsWith("Bearer ")) return json({ error: "UNAUTHORIZED" }, 401);
+  const workerSecret = Deno.env.get("RECEIPT_WORKER_SECRET");
+  if (!workerSecret) return json({ error: "SERVER_NOT_CONFIGURED" }, 500);
+  if (request.headers.get("x-safety-worker-secret") !== workerSecret) {
+    return json({ error: "UNAUTHORIZED" }, 401);
+  }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!supabaseUrl || !anonKey || !serviceRoleKey) return json({ error: "SERVER_NOT_CONFIGURED" }, 500);
-
-  const authClient = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: authHeader } },
-  });
-  const { data: { user } } = await authClient.auth.getUser();
-  if (!user) return json({ error: "UNAUTHORIZED" }, 401);
+  if (!supabaseUrl || !serviceRoleKey) return json({ error: "SERVER_NOT_CONFIGURED" }, 500);
 
   const admin = createClient(supabaseUrl, serviceRoleKey);
 
@@ -39,16 +35,8 @@ Deno.serve(async (request) => {
 
   if (deliveryError) return json({ error: deliveryError.message }, 500);
 
-  const authorized = [];
-  for (const delivery of deliveries ?? []) {
-    const { data: incident } = await admin
-      .from("emergency_incidents")
-      .select("user_id")
-      .eq("id", delivery.incident_id)
-      .eq("user_id", user.id)
-      .maybeSingle();
-    if (incident) authorized.push(delivery);
-  }
+  const authorized = deliveries ?? [];
+
 
   if (!authorized.length) return json({ ok: true, checked: 0 });
 
