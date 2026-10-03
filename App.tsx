@@ -105,18 +105,15 @@ export default function App() {
 
   const redeemInvitationToken = async (token: string) => {
     if (!isSupabaseConfigured || !token) return;
+    const user = await getCurrentUser();
+    if (!user?.id) {
+      await AsyncStorage.setItem("safety.pendingContactInvite.v1", token);
+      return;
+    }
     try {
       await redeemContactLinkInvitation(token);
+      await AsyncStorage.removeItem("safety.pendingContactInvite.v1");
       Alert.alert("Trusted contact connected", "This Safety account is now linked as a trusted contact.");
-      const recovered = await recoverBackendContacts();
-      if (recovered) {
-        setContacts(recovered.map((item) => ({
-          id: item.id,
-          name: item.name,
-          phone: item.phone,
-          relationship: item.relationship ?? "",
-        })));
-      }
     } catch (error) {
       console.error("Trusted-contact invitation redemption failed", error);
       Alert.alert("Invitation unavailable", "This invitation may be expired, already used, or not intended for this account.");
@@ -135,6 +132,14 @@ export default function App() {
         console.error("Safety deep-link handling failed", error);
       }
     };
+
+    const redeemPendingInvitation = async () => {
+      const token = await AsyncStorage.getItem("safety.pendingContactInvite.v1");
+      if (token && (await getCurrentUser())?.id) {
+        await redeemInvitationToken(token);
+      }
+    };
+    void redeemPendingInvitation();
     void Linking.getInitialURL().then((url) => {
       if (url) handleUrl({ url });
     });
