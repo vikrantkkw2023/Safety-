@@ -297,6 +297,58 @@ export function onAuthStateChange(
 }
 
 
+
+export async function notifyActiveIncident(incidentId: string) {
+  const client = configuredClient();
+  const { data, error } = await client.functions.invoke("send-sos-notification", {
+    body: { incident_id: incidentId },
+  });
+  if (error) throw error;
+  return data as { ok: boolean; sent?: number; failed?: number; skipped?: number };
+}
+
+export async function createIncidentAccessGrant(
+  incidentId: string,
+  recipientUserId: string,
+  expiresAt: string,
+) {
+  const client = configuredClient();
+  const { data, error } = await client.functions.invoke("grant-incident-access", {
+    body: {
+      incident_id: incidentId,
+      recipient_user_id: recipientUserId,
+      expires_at: expiresAt,
+    },
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function getGrantedIncident(incidentId: string) {
+  const client = configuredClient();
+  const { data, error } = await client.functions.invoke("get-incident-view", {
+    body: { incident_id: incidentId },
+  });
+  if (error) throw error;
+  return data as {
+    incident: {
+      id: string;
+      status: "ACTIVE" | "CANCELLED" | "RESOLVED";
+      started_at: string;
+      latitude: number;
+      longitude: number;
+      accuracy: number | null;
+      owner_name: string | null;
+    };
+    latest_location: {
+      latitude: number;
+      longitude: number;
+      accuracy: number | null;
+      recorded_at: string;
+    } | null;
+  };
+}
+
 export async function createAudioEvidence(
   userId: string,
   evidence: {
