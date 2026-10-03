@@ -337,6 +337,39 @@ export async function redeemContactLinkInvitation(token: string) {
   return data as { ok: boolean; contact_id: string };
 }
 
+export async function acknowledgeIncident(incidentId: string) {
+  const client = configuredClient();
+  const user = await getCurrentUser();
+  if (!user?.id) throw new Error("UNAUTHORIZED");
+
+  const { data, error } = await client
+    .from("incident_access_grants")
+    .select("incident_id,expires_at,revoked_at")
+    .eq("incident_id", incidentId)
+    .eq("recipient_user_id", user.id)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data || data.revoked_at || new Date(data.expires_at).getTime() <= Date.now()) {
+    throw new Error("ACCESS_DENIED");
+  }
+
+  const { data: acknowledgement, error: acknowledgementError } = await client
+    .from("incident_acknowledgements")
+    .upsert(
+      {
+        incident_id: incidentId,
+        recipient_user_id: user.id,
+      },
+      { onConflict: "incident_id,recipient_user_id" },
+    )
+    .select()
+    .single();
+
+  if (acknowledgementError) throw acknowledgementError;
+  return acknowledgement as { id: string; incident_id: string; recipient_user_id: string; acknowledged_at: string };
+}
+
 export async function createIncidentAccessGrant(
   incidentId: string,
   recipientUserId: string,
@@ -376,6 +409,8 @@ export async function getGrantedIncident(incidentId: string) {
       accuracy: number | null;
       recorded_at: string;
     } | null;
+    acknowledgement?: { acknowledged_at: string } | null;
+    acknowledgement_count?: number;
   };
 }
 
