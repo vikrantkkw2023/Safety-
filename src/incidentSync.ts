@@ -14,7 +14,7 @@ export type LocalIncident = {
 export async function syncIncidentCreate(
   incident: LocalIncident,
   queue: SyncOperation[],
-): Promise<{ queue: SyncOperation[]; synced: boolean }> {
+): Promise<{ queue: SyncOperation[]; synced: boolean; remoteIncidentId?: string }> {
   const session = await getSession();
   if (!session?.user?.id) {
     return {
@@ -34,16 +34,16 @@ export async function syncIncidentCreate(
 
   try {
     const existing = await findIncidentByLocalId(session.user.id, incident.id);
-    if (existing) return { queue, synced: true };
+    if (existing) return { queue, synced: true, remoteIncidentId: existing.id };
 
-    await createIncident(session.user.id, {
+    const created = await createIncident(session.user.id, {
       client_local_id: incident.id,
       latitude: incident.latitude,
       longitude: incident.longitude,
       accuracy: incident.accuracy ?? null,
       started_at: incident.startedAt,
     });
-    return { queue, synced: true };
+    return { queue, synced: true, remoteIncidentId: created.id };
   } catch {
     return {
       queue: enqueueOperation(queue, {
