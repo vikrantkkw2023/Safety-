@@ -11,22 +11,26 @@
 - [x] Local persistence
 
 ## Phase 2 — Connected MVP
-- [ ] Supabase Auth
-- [ ] PostgreSQL emergency incidents
-- [ ] Row Level Security
-- [ ] Trusted contact server records
-- [ ] Push notifications
-- [ ] Secure emergency-location link
-- [ ] Incident acknowledgement
+- [x] Supabase Auth
+- [x] PostgreSQL emergency incidents
+- [x] Row Level Security foundation
+- [x] Trusted contact server records
+- [x] Push notifications through an Edge Function
+- [x] Secure emergency-location access grants
+- [x] Recipient emergency viewer
+- [x] Offline retry queue
 
 ## Phase 3 — Safety hardening
 - [ ] Rate limiting and abuse prevention
-- [ ] Device/network failure handling
-- [ ] Location freshness indicators
+- [x] Device/network failure handling foundation
+- [x] Background live-location foundation
+- [x] Private audio evidence storage foundation
+- [ ] Location freshness indicators and responder acknowledgement
 - [ ] Audit events
 - [ ] Privacy/consent screens
 - [ ] Data retention and deletion controls
-- [ ] Automated unit/integration tests
+- [x] Automated unit tests present
+- [ ] Automated integration/device tests
 - [ ] Crash monitoring
 
 ## Phase 4 — Advanced safety
@@ -60,7 +64,11 @@ Only after written authorization, technical integration, testing, and applicable
 The product must never claim guaranteed official response before such an integration is real and operational.
 
 
-## Current development step — Backend safety foundation
+## Current development step — Functional foundation complete
+
+The repository now contains the connected emergency flow: account authentication, trusted-contact linking, server incidents, authorized recipient access, push-notification delivery, background live-location foundation, private audio evidence foundation, offline retry handling, and safe account management. Real backend deployment and physical-device verification remain required.
+
+## Current development step — Verification and production hardening
 
 Before connecting the mobile app to production services, the database now includes:
 - one ACTIVE incident per user at the database layer;
