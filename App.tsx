@@ -19,10 +19,12 @@ import { getCountries, getCountryCallingCode } from "libphonenumber-js";
 import { isDuplicatePhone, isValidActiveIncident, isValidPhone, normalizePhone, validateCountryPhone } from "./src/safetyRules";
 import { persistAndSyncIncident, endAndSyncIncident } from "./src/sosCoordinator";
 import { initializeBackendSync, recoverBackendContacts } from "./src/appSync";
-import { getActiveIncident, getCurrentUser } from "./src/backend";
+import { createEmailAccount, getActiveIncident, getCurrentUser, resetEmailPassword, signInEmailAccount, signOutAccount } from "./src/backend";
 import { mergeContacts } from "./src/contactMerge";
 import { syncContactWithFallback } from "./src/contactSync";
 import { syncProfileWithFallback } from "./src/profileSync";
+import { isSupabaseConfigured } from "./src/supabase";
+import { normalizeEmail, validateEmail, validatePassword } from "./src/authRules";
 
 type Contact = {
   id: string;
@@ -62,6 +64,11 @@ export default function App() {
   const [signupName, setSignupName] = useState("");
   const [signupCountry, setSignupCountry] = useState("");
   const [signupPhone, setSignupPhone] = useState("");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
+  const [authBusy, setAuthBusy] = useState(false);
+  const [supabaseAuthAvailable, setSupabaseAuthAvailable] = useState(false);
   const [countryPickerOpen, setCountryPickerOpen] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -223,6 +230,69 @@ export default function App() {
     } catch (error) {
       console.error("Could not save profile", error);
       Alert.alert("Could not create account", "Please try again.");
+    }
+  };
+
+  const handleEmailAuth = async () => {
+    const emailError = validateEmail(authEmail);
+    const passwordError = validatePassword(authPassword);
+    if (emailError) {
+      Alert.alert("Invalid email", emailError);
+      return;
+    }
+    if (passwordError) {
+      Alert.alert("Invalid password", passwordError);
+      return;
+    }
+    if (!isSupabaseConfigured) {
+      Alert.alert("Backend not configured", "Supabase is not configured yet. You can continue with the local test profile.");
+      return;
+    }
+
+    setAuthBusy(true);
+    try {
+      const email = normalizeEmail(authEmail);
+      if (authMode === "signup") {
+        const { data, error } = await createEmailAccount(email, authPassword);
+        if (error) throw error;
+        if (!data.session) {
+          Alert.alert("Check your email", "Your account was created. Complete email verification, then sign in.");
+        } else {
+          Alert.alert("Account created", "Your Safety account is ready. Continue with your local profile details.");
+        }
+      } else {
+        const { error } = await signInEmailAccount(email, authPassword);
+        if (error) throw error;
+        Alert.alert("Signed in", "Your Safety account is now connected.");
+      }
+    } catch (error) {
+      console.error("Authentication failed", error);
+      const message = error instanceof Error ? error.message : "Authentication failed. Please try again.";
+      Alert.alert("Authentication failed", message);
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    const emailError = validateEmail(authEmail);
+    if (emailError) {
+      Alert.alert("Enter your email", emailError);
+      return;
+    }
+    if (!isSupabaseConfigured) {
+      Alert.alert("Backend not configured", "Password recovery becomes available after Supabase is configured.");
+      return;
+    }
+    setAuthBusy(true);
+    try {
+      await resetEmailPassword(normalizeEmail(authEmail));
+      Alert.alert("Check your email", "If an account exists for that address, Supabase will send password recovery instructions.");
+    } catch (error) {
+      console.error("Password reset failed", error);
+      Alert.alert("Password reset failed", "Please check the email address and try again.");
+    } finally {
+      setAuthBusy(false);
     }
   };
 
@@ -775,7 +845,7 @@ const styles = StyleSheet.create({
   countryRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 15, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: "#F2F4F7" },
   countryName: { fontSize: 16 },
   countryCode: { fontWeight: "700", color: "#667085" },
-  input: { borderWidth: 1, borderColor: "#D0D5DD", borderRadius: 10, padding: 13, marginBottom: 10, backgroundColor: "#fff" },
+  authLink: { textAlign: "center", color: "#175CD3", fontWeight: "700", marginTop: 12 },\n  input: { borderWidth: 1, borderColor: "#D0D5DD", borderRadius: 10, padding: 13, marginBottom: 10, backgroundColor: "#fff" },
   primaryButton: { backgroundColor: "#101828", padding: 14, borderRadius: 10, alignItems: "center" },
   primaryButtonText: { color: "white", fontWeight: "800" },
   secondaryButton: { marginTop: 16, borderWidth: 1, borderColor: "#D0D5DD", padding: 13, borderRadius: 10, alignItems: "center" },
