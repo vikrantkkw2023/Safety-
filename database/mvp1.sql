@@ -256,3 +256,57 @@ create policy "incident access owner read"
         and i.user_id = auth.uid()
     )
   );
+
+
+-- Latest live location for an active incident.
+create table if not exists public.incident_live_locations (
+  incident_id uuid primary key references public.emergency_incidents(id) on delete cascade,
+  latitude double precision not null check (latitude between -90 and 90),
+  longitude double precision not null check (longitude between -180 and 180),
+  accuracy double precision check (accuracy is null or accuracy >= 0),
+  recorded_at timestamptz not null default now()
+);
+
+alter table public.incident_live_locations enable row level security;
+
+create policy "live location owner access"
+  on public.incident_live_locations for all
+  using (
+    exists (
+      select 1 from public.emergency_incidents i
+      where i.id = incident_live_locations.incident_id
+        and i.user_id = auth.uid()
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.emergency_incidents i
+      where i.id = incident_live_locations.incident_id
+        and i.user_id = auth.uid()
+    )
+  );
+
+-- Opaque, short-lived emergency access tokens. Only a hash is stored.
+create table if not exists public.incident_access_tokens (
+  id uuid primary key default gen_random_uuid(),
+  incident_id uuid not null references public.emergency_incidents(id) on delete cascade,
+  token_hash text not null unique,
+  expires_at timestamptz not null,
+  revoked_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists incident_access_tokens_incident_idx
+  on public.incident_access_tokens(incident_id);
+
+alter table public.incident_access_tokens enable row level security;
+
+create policy "incident access tokens owner only"
+  on public.incident_access_tokens for select
+  using (
+    exists (
+      select 1 from public.emergency_incidents i
+      where i.id = incident_access_tokens.incident_id
+        and i.user_id = auth.uid()
+    )
+  );
