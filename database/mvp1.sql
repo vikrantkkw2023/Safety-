@@ -205,6 +205,7 @@ create policy "audio owner upload"
   with check (
     bucket_id = 'safety-audio'
     and auth.uid() is not null
+    and (storage.foldername(name))[1] = auth.uid()::text
   );
 
 create policy "audio owner read"
@@ -212,6 +213,7 @@ create policy "audio owner read"
   using (
     bucket_id = 'safety-audio'
     and auth.uid() is not null
+    and (storage.foldername(name))[1] = auth.uid()::text
   );
 
 create policy "audio owner delete"
@@ -219,4 +221,5 @@ create policy "audio owner delete"
   using (
     bucket_id = 'safety-audio'
     and auth.uid() is not null
+    and (storage.foldername(name))[1] = auth.uid()::text
   );
