@@ -52,32 +52,30 @@ export default {
         return Response.json({ error: "PHONE_MISMATCH" }, { status: 403 });
       }
 
-      const now = new Date().toISOString();
-      const { data: claimedInvitation, error: consumeError } = await ctx.supabaseAdmin
-        .from("contact_link_invitations")
-        .update({ consumed_at: now })
-        .eq("id", invitation.id)
-        .is("consumed_at", null)
-        .gt("expires_at", now)
-        .select("id")
-        .maybeSingle();
+      const { data: contactId, error: redeemError } = await ctx.supabaseAdmin
+        .rpc("redeem_contact_link_invitation", {
+          p_token_hash: tokenHash,
+          p_recipient_user_id: recipientId,
+        });
 
-      if (consumeError) throw consumeError;
-      if (!claimedInvitation) return Response.json({ error: "INVITATION_ALREADY_USED" }, { status: 409 });
+      if (redeemError) {
+        const message = typeof redeemError.message === "string" ? redeemError.message : "";
+        if (message.includes("INVITATION_INVALID_OR_EXPIRED")) {
+          return Response.json({ error: "INVITATION_INVALID_OR_EXPIRED" }, { status: 403 });
+        }
+        if (message.includes("SELF_LINK_NOT_ALLOWED")) {
+          return Response.json({ error: "SELF_LINK_NOT_ALLOWED" }, { status: 400 });
+        }
+        if (message.includes("PHONE_MISMATCH")) {
+          return Response.json({ error: "PHONE_MISMATCH" }, { status: 403 });
+        }
+        if (message.includes("CONTACT_LINK_UNAVAILABLE")) {
+          return Response.json({ error: "CONTACT_LINK_UNAVAILABLE" }, { status: 409 });
+        }
+        throw redeemError;
+      }
 
-      const { data: linked, error: linkError } = await ctx.supabaseAdmin
-        .from("emergency_contacts")
-        .update({ linked_user_id: recipientId })
-        .eq("id", contact.id)
-        .eq("user_id", invitation.owner_user_id)
-        .is("linked_user_id", null)
-        .select("id")
-        .maybeSingle();
-
-      if (linkError) throw linkError;
-      if (!linked) return Response.json({ error: "CONTACT_LINK_UNAVAILABLE" }, { status: 409 });
-
-      return Response.json({ ok: true, contact_id: contact.id });
+      return Response.json({ ok: true, contact_id: contactId });
     } catch (error) {
       console.error("redeem-contact-link-invitation failed", error);
       return Response.json({ error: "INVITATION_REDEEM_FAILED" }, { status: 500 });
