@@ -20,6 +20,15 @@ export type NotificationRegistrationResult =
 export async function registerNotificationDevice(): Promise<NotificationRegistrationResult> {
   if (!isSupabaseConfigured) return { registered: false, reason: "NOT_CONFIGURED" };
 
+  if (Platform.OS === "android") {
+    await Notifications.setNotificationChannelAsync("sos", {
+      name: "Safety SOS",
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      sound: "default",
+    });
+  }
+
   const user = await getCurrentUser();
   if (!user?.id) return { registered: false, reason: "NO_SESSION" };
 
