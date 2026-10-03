@@ -15,6 +15,7 @@ import {
 import * as Location from "expo-location";
 import * as SMS from "expo-sms";
 import { AudioModule, RecordingPresets, setAudioModeAsync, useAudioRecorder } from "expo-audio";
+import * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getCountries, getCountryCallingCode } from "libphonenumber-js";
 import { isDuplicatePhone, isValidActiveIncident, isValidPhone, normalizePhone, validateCountryPhone } from "./src/safetyRules";
@@ -83,6 +84,16 @@ export default function App() {
   const audioRecorder = useAudioRecorder({ ...RecordingPresets.HIGH_QUALITY, directory: "document" });
   const audioRecordingRef = useRef(false);
   const audioStartedAtRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data;
+      if (data?.type === "SOS_ACTIVE" && typeof data.incidentId === "string") {
+        console.log("SOS notification opened", data.incidentId);
+      }
+    });
+    return () => subscription.remove();
+  }, []);
 
   useEffect(() => {
     let mounted = true;
