@@ -322,6 +322,81 @@ create policy "incident access owner read"
   );
 
 
+-- Recipient acknowledgement for active SOS incidents.
+create table if not exists public.incident_acknowledgements (
+  id uuid primary key default gen_random_uuid(),
+  incident_id uuid not null references public.emergency_incidents(id) on delete cascade,
+  recipient_user_id uuid not null references auth.users(id) on delete cascade,
+  acknowledged_at timestamptz not null default now()
+);
+
+create unique index if not exists incident_acknowledgements_unique_idx
+  on public.incident_acknowledgements(incident_id, recipient_user_id);
+
+create index if not exists incident_acknowledgements_incident_idx
+  on public.incident_acknowledgements(incident_id);
+
+alter table public.incident_acknowledgements enable row level security;
+
+create policy "incident acknowledgement recipient read"
+  on public.incident_acknowledgements for select
+  using (auth.uid() = recipient_user_id);
+
+create policy "incident acknowledgement owner read"
+  on public.incident_acknowledgements for select
+  using (
+    exists (
+      select 1
+      from public.emergency_incidents i
+      where i.id = incident_acknowledgements.incident_id
+        and i.user_id = auth.uid()
+    )
+  );
+
+create policy "incident acknowledgement recipient insert"
+  on public.incident_acknowledgements for insert
+  with check (
+    auth.uid() = recipient_user_id
+    and exists (
+      select 1
+      from public.incident_access_grants g
+      where g.incident_id = incident_acknowledgements.incident_id
+        and g.recipient_user_id = auth.uid()
+        and g.revoked_at is null
+        and g.expires_at > now()
+    )
+  );
+
+
+-- Automatically revoke every recipient grant when an incident ends.
+-- This is enforced at the database layer so the client cannot accidentally
+-- leave an emergency view accessible after RESOLVED/CANCELLED.
+create or replace function public.revoke_incident_access_on_end()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $
+begin
+  if old.status = 'ACTIVE' and new.status <> 'ACTIVE' then
+    update public.incident_access_grants
+      set revoked_at = coalesce(new.ended_at, now())
+      where incident_id = new.id
+        and revoked_at is null;
+  end if;
+  return new;
+end;
+$;
+
+drop trigger if exists emergency_incident_revoke_access on public.emergency_incidents;
+
+create trigger emergency_incident_revoke_access
+after update of status, ended_at on public.emergency_incidents
+for each row
+execute function public.revoke_incident_access_on_end();
+
+revoke all on function public.revoke_incident_access_on_end() from public, anon, authenticated;
+
 -- Latest live location for an active incident.
 create table if not exists public.incident_live_locations (
   incident_id uuid primary key references public.emergency_incidents(id) on delete cascade,
