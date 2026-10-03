@@ -18,6 +18,7 @@ export type NotificationRegistrationResult =
   | { registered: false; reason: "NOT_CONFIGURED" | "NO_SESSION" | "PERMISSION_DENIED" | "UNAVAILABLE" };
 
 export async function registerNotificationDevice(): Promise<NotificationRegistrationResult> {
+  if (Platform.OS !== "android" && Platform.OS !== "ios") return { registered: false, reason: "UNAVAILABLE" };
   if (!isSupabaseConfigured) return { registered: false, reason: "NOT_CONFIGURED" };
 
   if (Platform.OS === "android") {
@@ -44,10 +45,16 @@ export async function registerNotificationDevice(): Promise<NotificationRegistra
     return { registered: false, reason: "PERMISSION_DENIED" };
   }
 
-  const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+  const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
   if (!projectId) return { registered: false, reason: "UNAVAILABLE" };
 
-  const tokenResult = await Notifications.getExpoPushTokenAsync({ projectId });
+  let tokenResult: Notifications.ExpoPushToken;
+  try {
+    tokenResult = await Notifications.getExpoPushTokenAsync({ projectId });
+  } catch (error) {
+    console.error("Push token registration failed", error);
+    return { registered: false, reason: "UNAVAILABLE" };
+  }
   const token = tokenResult.data;
   if (!token) return { registered: false, reason: "UNAVAILABLE" };
 
