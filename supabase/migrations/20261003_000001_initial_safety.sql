@@ -63,10 +63,14 @@ alter table public.profiles enable row level security;
 alter table public.emergency_contacts enable row level security;
 alter table public.emergency_incidents enable row level security;
 
+drop policy if exists "profiles own row" on public.profiles;
+
 create policy "profiles own row"
   on public.profiles for all
   using (auth.uid() = id)
   with check (auth.uid() = id);
+
+drop policy if exists "contacts own rows" on public.emergency_contacts;
 
 create policy "contacts own rows"
   on public.emergency_contacts for all
@@ -75,18 +79,26 @@ create policy "contacts own rows"
 
 drop policy if exists "incidents own rows" on public.emergency_incidents;
 
+drop policy if exists "incidents owner read" on public.emergency_incidents;
+
 create policy "incidents owner read"
   on public.emergency_incidents for select
   using (auth.uid() = user_id);
+
+drop policy if exists "incidents owner insert" on public.emergency_incidents;
 
 create policy "incidents owner insert"
   on public.emergency_incidents for insert
   with check (auth.uid() = user_id);
 
+drop policy if exists "incidents owner update" on public.emergency_incidents;
+
 create policy "incidents owner update"
   on public.emergency_incidents for update
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+drop policy if exists "incidents owner delete resolved" on public.emergency_incidents;
 
 create policy "incidents owner delete resolved"
   on public.emergency_incidents for delete
@@ -197,6 +209,8 @@ create unique index if not exists notification_devices_user_token_idx
 
 alter table public.notification_devices enable row level security;
 
+drop policy if exists "notification device owner access" on public.notification_devices;
+
 create policy "notification device owner access"
   on public.notification_devices for all
   using (auth.uid() = user_id)
@@ -231,6 +245,8 @@ create index if not exists notification_deliveries_incident_idx
 
 alter table public.notification_deliveries enable row level security;
 
+drop policy if exists "notification delivery owner read" on public.notification_deliveries;
+
 create policy "notification delivery owner read"
   on public.notification_deliveries for select
   using (
@@ -257,6 +273,8 @@ create index if not exists incident_audio_evidence_incident_idx
   on public.incident_audio_evidence(incident_id);
 
 alter table public.incident_audio_evidence enable row level security;
+
+drop policy if exists "audio evidence owner access" on public.incident_audio_evidence;
 
 create policy "audio evidence owner access"
   on public.incident_audio_evidence for all
@@ -288,6 +306,8 @@ create index if not exists incident_audio_uploads_evidence_idx
   on public.incident_audio_uploads(evidence_id);
 
 alter table public.incident_audio_uploads enable row level security;
+
+drop policy if exists "audio upload owner read" on public.incident_audio_uploads;
 
 create policy "audio upload owner read"
   on public.incident_audio_uploads for select
@@ -335,6 +355,8 @@ insert into storage.buckets (id, name, public)
 values ('safety-audio', 'safety-audio', false)
 on conflict (id) do update set public = false;
 
+drop policy if exists "audio owner upload" on storage.objects;
+
 create policy "audio owner upload"
   on storage.objects for insert
   with check (
@@ -343,6 +365,8 @@ create policy "audio owner upload"
     and (storage.foldername(name))[1] = auth.uid()::text
   );
 
+drop policy if exists "audio owner read" on storage.objects;
+
 create policy "audio owner read"
   on storage.objects for select
   using (
@@ -350,6 +374,8 @@ create policy "audio owner read"
     and auth.uid() is not null
     and (storage.foldername(name))[1] = auth.uid()::text
   );
+
+drop policy if exists "audio owner delete" on storage.objects;
 
 create policy "audio owner delete"
   on storage.objects for delete
@@ -375,6 +401,8 @@ create index if not exists contact_link_invitations_owner_idx
   on public.contact_link_invitations(owner_user_id);
 
 alter table public.contact_link_invitations enable row level security;
+
+drop policy if exists "contact link invitation owner read" on public.contact_link_invitations;
 
 create policy "contact link invitation owner read"
   on public.contact_link_invitations for select
@@ -406,9 +434,13 @@ create index if not exists incident_access_grants_recipient_idx
 
 alter table public.incident_access_grants enable row level security;
 
+drop policy if exists "incident access recipient read" on public.incident_access_grants;
+
 create policy "incident access recipient read"
   on public.incident_access_grants for select
   using (auth.uid() = recipient_user_id);
+
+drop policy if exists "incident access owner read" on public.incident_access_grants;
 
 create policy "incident access owner read"
   on public.incident_access_grants for select
@@ -437,9 +469,13 @@ create index if not exists incident_acknowledgements_incident_idx
 
 alter table public.incident_acknowledgements enable row level security;
 
+drop policy if exists "incident acknowledgement recipient read" on public.incident_acknowledgements;
+
 create policy "incident acknowledgement recipient read"
   on public.incident_acknowledgements for select
   using (auth.uid() = recipient_user_id);
+
+drop policy if exists "incident acknowledgement owner read" on public.incident_acknowledgements;
 
 create policy "incident acknowledgement owner read"
   on public.incident_acknowledgements for select
@@ -451,6 +487,8 @@ create policy "incident acknowledgement owner read"
         and i.user_id = auth.uid()
     )
   );
+
+drop policy if exists "incident acknowledgement recipient insert" on public.incident_acknowledgements;
 
 create policy "incident acknowledgement recipient insert"
   on public.incident_acknowledgements for insert
@@ -507,6 +545,8 @@ create table if not exists public.incident_live_locations (
 
 alter table public.incident_live_locations enable row level security;
 
+drop policy if exists "live location owner access" on public.incident_live_locations;
+
 create policy "live location owner access"
   on public.incident_live_locations for all
   using (
@@ -523,6 +563,8 @@ create policy "live location owner access"
         and i.user_id = auth.uid()
     )
   );
+
+drop policy if exists "live location granted recipient access" on public.incident_live_locations;
 
 create policy "live location granted recipient access"
   on public.incident_live_locations for select
@@ -551,6 +593,8 @@ create index if not exists incident_access_tokens_incident_idx
   on public.incident_access_tokens(incident_id);
 
 alter table public.incident_access_tokens enable row level security;
+
+drop policy if exists "incident access tokens owner only" on public.incident_access_tokens;
 
 create policy "incident access tokens owner only"
   on public.incident_access_tokens for select
