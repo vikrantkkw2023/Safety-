@@ -912,6 +912,8 @@ export default function App() {
             status: "LOCAL_PENDING_UPLOAD",
           });
           evidenceId = evidence.id;
+        } else {
+          await updateAudioEvidenceStatus(currentUser.id, evidenceId, "LOCAL_PENDING_UPLOAD");
         }
 
         await uploadAudioEvidence(currentUser.id, item.storagePath, item.localUri);
@@ -929,7 +931,7 @@ export default function App() {
           if (queuedItem) {
             remaining[index] = {
               ...queuedItem,
-              evidenceId: item.evidenceId,
+              evidenceId: evidenceId ?? item.evidenceId,
               attempts: item.attempts + 1,
             };
           }
