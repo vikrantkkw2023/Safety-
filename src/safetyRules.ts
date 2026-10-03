@@ -27,6 +27,26 @@ export function validateCountryPhone(phone: string, country: string): {
   }
 }
 
+export function validateInternationalPhone(phone: string): {
+  valid: boolean;
+  e164?: string;
+  reason?: string;
+} {
+  try {
+    const candidate = phone.trim();
+    if (!candidate.startsWith("+")) {
+      return { valid: false, reason: "Include the country code, for example +91 9876543210." };
+    }
+    const parsed = parsePhoneNumberWithError(candidate);
+    if (!parsed.isValid()) {
+      return { valid: false, reason: "Enter a valid international phone number." };
+    }
+    return { valid: true, e164: parsed.number };
+  } catch {
+    return { valid: false, reason: "Enter a valid international phone number." };
+  }
+}
+
 export function isValidPhone(phone: string): boolean {
   const digits = normalizePhone(phone);
   return digits.length >= 7 && digits.length <= 15;
