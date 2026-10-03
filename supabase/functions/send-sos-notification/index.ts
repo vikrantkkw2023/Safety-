@@ -19,8 +19,8 @@ export default {
       const { data: incident, error: incidentError } = await ctx.supabaseAdmin
         .from("emergency_incidents")
         .select("id,user_id,status,started_at")
-        .eq("id", incidentId)
         .eq("user_id", authData.user.id)
+        .eq(incidentId ? "id" : "client_local_id", incidentId || clientLocalId)
         .maybeSingle();
 
       if (incidentError) throw incidentError;
