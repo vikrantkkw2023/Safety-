@@ -36,11 +36,11 @@ export async function retryPendingSync(): Promise<{ remaining: number; synced: n
         }
       } else if (operation.type === "CONTACT_DELETE") {
         const phone = operation.payload.phone;
-        if (!phone) throw new Error("INVALID_CONTACT_DELETE_PAYLOAD");
+        if (typeof phone !== "string" || !phone) throw new Error("INVALID_CONTACT_DELETE_PAYLOAD");
         await deleteContactByPhone(session.user.id, phone);
       } else if (operation.type === "INCIDENT_CREATE") {
         const localId = operation.payload.local_id;
-        if (!localId) throw new Error("MISSING_LOCAL_INCIDENT_ID");
+        if (typeof localId !== "string" || !localId) throw new Error("MISSING_LOCAL_INCIDENT_ID");
         const existing = await findIncidentByLocalId(session.user.id, localId);
         if (!existing) {
           await createIncident(session.user.id, {
@@ -48,12 +48,12 @@ export async function retryPendingSync(): Promise<{ remaining: number; synced: n
             latitude: Number(operation.payload.latitude),
             longitude: Number(operation.payload.longitude),
             accuracy: operation.payload.accuracy == null ? null : Number(operation.payload.accuracy),
-            started_at: String(operation.payload.started_at),
+            started_at: typeof operation.payload.started_at === "string" ? operation.payload.started_at : String(operation.payload.started_at),
           });
         }
       } else if (operation.type === "INCIDENT_STATUS") {
         const localId = operation.payload.incident_id;
-        if (!localId) throw new Error("MISSING_LOCAL_INCIDENT_ID");
+        if (typeof localId !== "string" || !localId) throw new Error("MISSING_LOCAL_INCIDENT_ID");
         const remote = await findIncidentByLocalId(session.user.id, localId);
         if (!remote) break;
 
