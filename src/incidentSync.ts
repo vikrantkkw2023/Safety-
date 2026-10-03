@@ -26,6 +26,7 @@ export async function syncIncidentCreate(
           longitude: incident.longitude,
           accuracy: incident.accuracy ?? null,
           started_at: incident.startedAt,
+          status: incident.status,
         },
       }),
       synced: false,
