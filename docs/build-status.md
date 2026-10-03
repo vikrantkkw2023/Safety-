@@ -34,6 +34,10 @@
 - [x] Automated CI workflow for typecheck and unit tests
 - [x] Notification device registration backend boundary
 - [x] Notification registration helper without privileged credentials
+- [x] Expo push-token registration and permission handling
+- [x] Expo notification plugin configuration
+- [x] Server-side push security boundary documented
+- [x] Notification device token validation
 
 ## Still required before production
 
