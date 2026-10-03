@@ -1,6 +1,11 @@
 import { withSupabase } from "npm:@supabase/server@1";
 
-type ExpoTicket = { status: "ok" | "error"; id?: string; message?: string; details?: unknown };
+type ExpoTicket = {
+  status: "ok" | "error";
+  id?: string;
+  message?: string;
+  details?: { error?: string; [key: string]: unknown };
+};
 
 export default {
   fetch: withSupabase({ auth: "user" }, async (_req, ctx) => {
@@ -111,7 +116,9 @@ export default {
           device_id: device.id,
           status: ticket?.status === "ok" ? "SENT" : "FAILED",
           provider_ticket_id: ticket?.id ?? null,
-          error_message: ticket?.message ?? null,
+          error_message:
+            ticket?.message ??
+            (ticket?.details && typeof ticket.details.error === "string" ? ticket.details.error : null),
         };
       });
 
@@ -124,9 +131,14 @@ export default {
       const staleDeviceIds = pending
         .filter((device, index) => {
           const ticket = tickets[index];
+          const detailError =
+            ticket?.details && typeof ticket.details.error === "string"
+              ? ticket.details.error
+              : "";
           return ticket?.status === "error" &&
-            typeof ticket.message === "string" &&
-            /DeviceNotRegistered|InvalidCredentials/i.test(ticket.message);
+            /DeviceNotRegistered|InvalidCredentials/i.test(
+              (ticket?.message ?? "") + " " + detailError,
+            );
         })
         .map((device) => device.id);
 
