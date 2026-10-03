@@ -29,19 +29,12 @@ jobs:
         with:
           deno-version: latest
 
-      - name: Cache Deno dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/deno
-          key: ${{ runner.os }}-deno-${{ hashFiles('supabase/functions/**/*.ts') }}
-
       - name: Typecheck Edge Functions
         shell: bash
         run: |
           set -euo pipefail
-          deno install --allow-scripts --allow-import
           while IFS= read -r file; do
             echo "Checking $file"
-            deno check --allow-import "$file"
+            deno check --node-modules-dir=auto "$file"
           done < <(find supabase/functions -mindepth 2 -maxdepth 2 -name index.ts -type f | sort)
 
