@@ -223,3 +223,36 @@ create policy "audio owner delete"
     and auth.uid() is not null
     and (storage.foldername(name))[1] = auth.uid()::text
   );
+
+
+-- Controlled access for trusted contacts viewing an active emergency.
+create table if not exists public.incident_access_grants (
+  id uuid primary key default gen_random_uuid(),
+  incident_id uuid not null references public.emergency_incidents(id) on delete cascade,
+  recipient_user_id uuid not null references auth.users(id) on delete cascade,
+  granted_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  revoked_at timestamptz
+);
+
+create unique index if not exists incident_access_grants_unique_idx
+  on public.incident_access_grants(incident_id, recipient_user_id);
+
+create index if not exists incident_access_grants_recipient_idx
+  on public.incident_access_grants(recipient_user_id);
+
+alter table public.incident_access_grants enable row level security;
+
+create policy "incident access recipient read"
+  on public.incident_access_grants for select
+  using (auth.uid() = recipient_user_id);
+
+create policy "incident access owner read"
+  on public.incident_access_grants for select
+  using (
+    exists (
+      select 1 from public.emergency_incidents i
+      where i.id = incident_access_grants.incident_id
+        and i.user_id = auth.uid()
+    )
+  );
