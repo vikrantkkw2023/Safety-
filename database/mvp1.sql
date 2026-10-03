@@ -123,6 +123,11 @@ create unique index if not exists notification_devices_user_token_idx
 
 alter table public.notification_devices enable row level security;
 
+create policy "notification device owner access"
+  on public.notification_devices for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
 create policy "notification devices own rows"
   on public.notification_devices for all
   using (auth.uid() = user_id)
