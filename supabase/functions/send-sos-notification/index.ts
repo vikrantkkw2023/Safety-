@@ -12,7 +12,8 @@ export default {
 
       const body = await _req.json().catch(() => null);
       const incidentId = body && typeof body.incident_id === "string" ? body.incident_id : "";
-      if (!incidentId || incidentId.length > 128) {
+      const clientLocalId = body && typeof body.client_local_id === "string" ? body.client_local_id : "";
+      if ((!incidentId && !clientLocalId) || incidentId.length > 128 || clientLocalId.length > 128) {
         return Response.json({ ok: false, error: "INVALID_INCIDENT_ID" }, { status: 400 });
       }
 
