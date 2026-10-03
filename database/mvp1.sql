@@ -127,3 +127,10 @@ create policy "notification devices own rows"
   on public.notification_devices for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+-- Notification device hardening
+alter table public.notification_devices
+  drop constraint if exists notification_devices_token_length;
+alter table public.notification_devices
+  add constraint notification_devices_token_length
+  check (char_length(expo_push_token) between 10 and 512);
