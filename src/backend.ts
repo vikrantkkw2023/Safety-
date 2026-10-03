@@ -267,6 +267,23 @@ export type IncidentHistoryRecord = IncidentRecord & {
 export async function deleteResolvedIncident(incidentId: string) {
   const client = configuredClient();
   if (!incidentId) throw new Error("INVALID_INCIDENT_ID");
+
+  const { data: evidence, error: evidenceError } = await client
+    .from("incident_audio_evidence")
+    .select("storage_path")
+    .eq("incident_id", incidentId);
+
+  if (evidenceError) throw evidenceError;
+
+  const paths = (evidence ?? [])
+    .map((row) => row.storage_path)
+    .filter((path): path is string => typeof path === "string" && path.length > 0);
+
+  if (paths.length) {
+    const { error: storageError } = await client.storage.from("safety-audio").remove(paths);
+    if (storageError) throw storageError;
+  }
+
   const { error } = await client.rpc("delete_resolved_incident", {
     p_incident_id: incidentId,
   });
