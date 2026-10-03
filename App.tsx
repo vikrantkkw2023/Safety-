@@ -158,52 +158,31 @@ export default function App() {
     const handleAuthChange = async () => {
       if (!active) return;
       try {
+        await initializeBackendSync();
         await registerNotificationDevice();
         const pendingToken = await AsyncStorage.getItem("safety.pendingContactInvite.v1");
         if (pendingToken) await redeemInvitationToken(pendingToken);
       } catch (error) {
-        console.error("Post-auth notification/invitation sync failed", error);
+        console.error("Post-auth Safety sync failed", error);
       }
     };
 
     const authSubscription = onAuthStateChange((event) => {
       if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") {
-        void handleAuthChange();
+        setTimeout(() => void handleAuthChange(), 0);
       }
     });
 
-    const syncAfterAuth = async () => {
-      if (!active || !(await getCurrentUser())?.id) return;
-      try {
-        await registerNotificationDevice();
-        const pendingToken = await AsyncStorage.getItem("safety.pendingContactInvite.v1");
-        if (pendingToken) {
-          await redeemInvitationToken(pendingToken);
-        }
-      } catch (error) {
-        console.error("Post-auth Safety sync failed", error);
-      }
-    };
-    void syncAfterAuth();
+    setTimeout(() => void handleAuthChange(), 0);
 
     const subscription = AppState.addEventListener("change", (nextState) => {
       const becameActive = (lastState === "background" || lastState === "inactive") && nextState === "active";
       lastState = nextState;
       if (becameActive) {
-        void initializeBackendSync().catch((error) => console.error("Foreground sync retry failed", error));
+        setTimeout(() => void handleAuthChange(), 0);
       }
     });
-    const register = async () => {
-      try {
-        const result = await registerNotificationDevice();
-        if (active && !result.registered && result.reason !== "PERMISSION_DENIED") {
-          console.log("Push notification registration not available:", result.reason);
-        }
-      } catch (error) {
-        console.error("Push notification registration failed", error);
-      }
-    };
-    void register();
+
     return () => {
       active = false;
       authSubscription.data.subscription.unsubscribe();
