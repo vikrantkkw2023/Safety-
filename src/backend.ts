@@ -316,6 +316,7 @@ export async function createContactLinkInvitation(contactId: string) {
   return data as { ok: boolean; token: string; expires_at: string };
 }
 
+
 export async function redeemContactLinkInvitation(token: string) {
   const client = configuredClient();
   const { data, error } = await client.functions.invoke("redeem-contact-link-invitation", {
