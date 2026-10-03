@@ -48,3 +48,12 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: supabase functions deploy --project-ref "${{ secrets.SUPABASE_PROJECT_ID }}"
+
+      - name: Configure receipt worker secret
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+          RECEIPT_WORKER_SECRET: ${{ secrets.RECEIPT_WORKER_SECRET }}
+        run: |
+          test -n "$RECEIPT_WORKER_SECRET"
+          supabase secrets set RECEIPT_WORKER_SECRET="$RECEIPT_WORKER_SECRET" --project-ref "$SUPABASE_PROJECT_ID"
