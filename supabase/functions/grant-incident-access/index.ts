@@ -15,6 +15,9 @@ export default {
       const expiry = new Date(expiresAt);
       if (!Number.isFinite(expiry.getTime()) || expiry.getTime() <= Date.now())
         return Response.json({ error: "INVALID_EXPIRY" }, { status: 400 });
+      const maxExpiry = Date.now() + 2 * 60 * 60 * 1000;
+      if (expiry.getTime() > maxExpiry)
+        return Response.json({ error: "EXPIRY_TOO_FAR" }, { status: 400 });
       const { data: incident } = await ctx.supabaseAdmin.from("emergency_incidents").select("id,status,user_id").eq("id", incidentId).eq("user_id", ownerId).eq("status","ACTIVE").maybeSingle();
       if (!incident) return Response.json({ error: "ACTIVE_INCIDENT_NOT_FOUND" }, { status: 404 });
       const { data: contacts } = await ctx.supabaseAdmin.from("emergency_contacts").select("phone,linked_user_id").eq("user_id", ownerId);
