@@ -259,6 +259,41 @@ export async function getActiveIncident(userId: string) {
   return (data ?? null) as IncidentRecord | null;
 }
 
+export type IncidentHistoryRecord = IncidentRecord & {
+  evidence_count: number;
+  uploaded_evidence_count: number;
+};
+
+export async function listIncidentHistory(userId: string, limit = 50): Promise<IncidentHistoryRecord[]> {
+  const client = configuredClient();
+  const safeLimit = Math.min(Math.max(Math.floor(limit), 1), 100);
+  const { data, error } = await client
+    .from("emergency_incidents")
+    .select("id,user_id,client_local_id,latitude,longitude,accuracy,started_at,ended_at,status,incident_audio_evidence(status)")
+    .eq("user_id", userId)
+    .order("started_at", { ascending: false })
+    .limit(safeLimit);
+
+  if (error) throw error;
+
+  return (data ?? []).map((row) => {
+    const evidence = Array.isArray(row.incident_audio_evidence) ? row.incident_audio_evidence as { status?: string }[] : [];
+    return {
+      id: row.id,
+      user_id: row.user_id,
+      client_local_id: row.client_local_id ?? null,
+      latitude: row.latitude,
+      longitude: row.longitude,
+      accuracy: row.accuracy ?? null,
+      started_at: row.started_at,
+      ended_at: row.ended_at ?? null,
+      status: row.status as IncidentRecord["status"],
+      evidence_count: evidence.length,
+      uploaded_evidence_count: evidence.filter((item) => item.status === "UPLOADED").length,
+    };
+  });
+}
+
 export async function listProfile(userId: string) {
   const client = configuredClient();
   const { data, error } = await client
