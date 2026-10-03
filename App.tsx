@@ -23,7 +23,7 @@ import { getCountries, getCountryCallingCode } from "libphonenumber-js";
 import { isDuplicatePhone, isValidActiveIncident, isValidPhone, normalizePhone, validateCountryPhone, validateInternationalPhone } from "./src/safetyRules";
 import { persistAndSyncIncident, endAndSyncIncident } from "./src/sosCoordinator";
 import { initializeBackendSync, recoverBackendContacts } from "./src/appSync";
-import { createEmailAccount, getActiveIncident, getCurrentUser, resetEmailPassword, signInEmailAccount, signOutAccount, getGrantedIncident, acknowledgeIncident, notifyActiveIncident, createContactLinkInvitation, redeemContactLinkInvitation } from "./src/backend";
+import { createEmailAccount, getActiveIncident, getCurrentUser, resetEmailPassword, signInEmailAccount, signOutAccount, getGrantedIncident, acknowledgeIncident, listIncidentHistory, notifyActiveIncident, createContactLinkInvitation, redeemContactLinkInvitation } from "./src/backend";
 import { mergeContacts } from "./src/contactMerge";
 import { syncContactWithFallback } from "./src/contactSync";
 import { syncProfileWithFallback } from "./src/profileSync";
@@ -71,6 +71,8 @@ export default function App() {
   const [screen, setScreen] = useState<"home" | "contacts" | "signup" | "about" | "recipientEmergency">("signup");
   const [recipientIncidentId, setRecipientIncidentId] = useState<string | null>(null);
   const [recipientView, setRecipientView] = useState<Awaited<ReturnType<typeof getGrantedIncident>> | null>(null);
+  const [incidentHistory, setIncidentHistory] = useState<Awaited<ReturnType<typeof listIncidentHistory>>>([]);
+  const [historyBusy, setHistoryBusy] = useState(false);
   const [profile, setProfile] = useState<{ name: string; country: string; phone: string } | null>(null);
   const [signupName, setSignupName] = useState("");
   const [signupCountry, setSignupCountry] = useState("");
@@ -870,6 +872,23 @@ export default function App() {
     ]);
   };
 
+  const loadIncidentHistory = async () => {
+    const user = await getCurrentUser();
+    if (!user?.id) {
+      Alert.alert("Sign in required", "Sign in to view your emergency history.");
+      return;
+    }
+    setHistoryBusy(true);
+    try {
+      setIncidentHistory(await listIncidentHistory(user.id));
+    } catch (error) {
+      console.error("Incident history load failed", error);
+      Alert.alert("History unavailable", "Safety could not load your emergency history.");
+    } finally {
+      setHistoryBusy(false);
+    }
+  };
+
   const renderHeader = () => (
     <View style={styles.header}>
       <View>
@@ -880,6 +899,11 @@ export default function App() {
         <TouchableOpacity style={styles.contactsButton} onPress={() => setScreen("contacts")}>
           <Text style={styles.contactsButtonText}>Contacts</Text>
         </TouchableOpacity>
+        {profile && !activeIncident && (
+          <TouchableOpacity style={styles.contactsButton} onPress={() => { setScreen("about"); void loadIncidentHistory(); }}>
+            <Text style={styles.contactsButtonText}>History</Text>
+          </TouchableOpacity>
+        )}
         {profile && (
           <TouchableOpacity style={styles.contactsButton} onPress={() => setScreen("about")}>
             <Text style={styles.contactsButtonText}>Account</Text>
@@ -1057,6 +1081,27 @@ export default function App() {
               <Text style={styles.secondaryButtonText}>Sign out</Text>
             </TouchableOpacity>
           )}
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Emergency history</Text>
+            <Text style={styles.smallText}>Your emergency history is available only to your authenticated Safety account. Audio evidence remains private.</Text>
+            <TouchableOpacity style={styles.secondaryButton} onPress={() => void loadIncidentHistory()} disabled={historyBusy}>
+              <Text style={styles.secondaryButtonText}>{historyBusy ? "Refreshing…" : "Refresh history"}</Text>
+            </TouchableOpacity>
+          </View>
+          {incidentHistory.length === 0 ? (
+            <View style={styles.card}><Text style={styles.smallText}>No previous emergencies are available.</Text></View>
+          ) : incidentHistory.map((incident) => (
+            <View style={styles.card} key={incident.id}>
+              <Text style={styles.sectionTitle}>{incident.status === "ACTIVE" ? "Active emergency" : "Emergency session"}</Text>
+              <Text style={styles.smallText}>Started: {new Date(incident.started_at).toLocaleString()}</Text>
+              {incident.ended_at && <Text style={styles.smallText}>Ended: {new Date(incident.ended_at).toLocaleString()}</Text>}
+              <Text style={styles.smallText}>Status: {incident.status}</Text>
+              {incident.evidence_count > 0 && <Text style={styles.smallText}>Private audio evidence: {incident.uploaded_evidence_count}/{incident.evidence_count} uploaded</Text>}
+              <TouchableOpacity style={styles.secondaryButton} onPress={() => void Linking.openURL(mapsUrl(incident.latitude, incident.longitude))}>
+                <Text style={styles.secondaryButtonText}>Open start location</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
           <TouchableOpacity style={styles.secondaryButton} onPress={() => setScreen("home")}>
             <Text style={styles.secondaryButtonText}>Back to Safety</Text>
           </TouchableOpacity>
