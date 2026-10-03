@@ -1,4 +1,4 @@
-import { createContact, createIncident, deleteContactByPhone, findContactByPhone, findIncidentByLocalId, getSession, updateIncidentStatus, upsertProfile } from "./backend";
+import { createContact, createIncident, deleteContactByPhone, findContactByPhone, findIncidentByLocalId, getSession, notifyActiveIncident, updateIncidentStatus, upsertProfile } from "./backend";
 import { loadSyncQueue, saveSyncQueue } from "./queueStorage";
 import { removeOperation, type SyncOperation } from "./syncQueue";
 
@@ -41,21 +41,27 @@ export async function retryPendingSync(): Promise<{ remaining: number; synced: n
       } else if (operation.type === "INCIDENT_CREATE") {
         const localId = operation.payload.local_id;
         if (typeof localId !== "string" || !localId) throw new Error("MISSING_LOCAL_INCIDENT_ID");
+
         const existing = await findIncidentByLocalId(session.user.id, localId);
-        if (!existing) {
-          const created = await createIncident(session.user.id, {
-            client_local_id: localId,
-            latitude: Number(operation.payload.latitude),
-            longitude: Number(operation.payload.longitude),
-            accuracy: operation.payload.accuracy == null ? null : Number(operation.payload.accuracy),
-            started_at: typeof operation.payload.started_at === "string" ? operation.payload.started_at : String(operation.payload.started_at),
-          });
-          if (operation.payload.status === "ACTIVE") {
-            try {
-              await import("./liveLocation").then(({ startLiveLocation }) => startLiveLocation(created.id));
-            } catch (locationError) {
-              console.error("Recovered live location could not start", locationError);
-            }
+        const remoteIncident = existing ?? await createIncident(session.user.id, {
+          client_local_id: localId,
+          latitude: Number(operation.payload.latitude),
+          longitude: Number(operation.payload.longitude),
+          accuracy: operation.payload.accuracy == null ? null : Number(operation.payload.accuracy),
+          started_at: typeof operation.payload.started_at === "string" ? operation.payload.started_at : String(operation.payload.started_at),
+        });
+
+        if (operation.payload.status === "ACTIVE" || remoteIncident.status === "ACTIVE") {
+          try {
+            await import("./liveLocation").then(({ startLiveLocation }) => startLiveLocation(remoteIncident.id));
+          } catch (locationError) {
+            console.error("Recovered live location could not start", locationError);
+          }
+
+          try {
+            await notifyActiveIncident(remoteIncident.id);
+          } catch (notificationError) {
+            console.error("Recovered SOS notification could not be sent", notificationError);
           }
         }
       } else if (operation.type === "INCIDENT_STATUS") {
