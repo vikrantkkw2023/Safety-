@@ -75,7 +75,7 @@ Deno.serve(async (request) => {
     if (!receipt) continue;
 
     const errorCode = receipt.details?.error ?? "";
-    const errorMessage = receipt.message ?? errorCode || null;
+    const errorMessage = receipt.message ?? (errorCode || null);
     const isError = receipt.status === "error";
 
     await admin.from("notification_deliveries").update({
