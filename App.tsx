@@ -901,8 +901,8 @@ export default function App() {
 
     const remaining = [...pending];
     for (const item of pending) {
+      let evidenceId = item.evidenceId;
       try {
-        let evidenceId = item.evidenceId;
         if (!evidenceId) {
           const evidence = await createAudioEvidence(currentUser.id, {
             incident_id: item.incidentId,
