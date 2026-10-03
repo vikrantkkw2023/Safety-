@@ -510,18 +510,25 @@ export default function App() {
       Alert.alert("Input too long", "Keep the name under 80 characters, phone number under 30 characters, and relationship under 50 characters.");
       return;
     }
-    if (!isValidPhone(cleanPhone)) {
-      Alert.alert("Invalid phone number", "Enter a valid phone number with 7–15 digits.");
+
+    const phoneValidation = validateCountryPhone(cleanPhone, signupCountry);
+    if (!phoneValidation.valid || !phoneValidation.e164) {
+      Alert.alert(
+        "Invalid phone number",
+        phoneValidation.reason ?? "Enter a valid international phone number."
+      );
       return;
     }
-    if (isDuplicatePhone(contacts.map((c) => c.phone), cleanPhone)) {
+
+    if (isDuplicatePhone(contacts.map((c) => c.phone), phoneValidation.e164)) {
       Alert.alert("Already added", "This phone number is already a trusted contact.");
       return;
     }
+
     const newContact: Contact = {
       id: `CONTACT-${Date.now()}`,
       name: cleanName,
-      phone: cleanPhone,
+      phone: phoneValidation.e164,
       relationship: relationship.trim() || "Trusted contact",
     };
     setContacts((current) => [...current, newContact]);
