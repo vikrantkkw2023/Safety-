@@ -1165,7 +1165,7 @@ export default function App() {
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Emergency status</Text>
             <Text style={styles.smallText}>{recipientView.incident.status}</Text>
-            <Text style={styles.cardText}>
+            <Text style={styles.smallText}>
               Location updated: {"recorded_at" in location ? location.recorded_at : recipientView.incident.started_at}
             </Text>
             {location.accuracy != null && (
