@@ -1,0 +1,24 @@
+# Supabase project configuration
+# The project is linked at deploy time with SUPABASE_PROJECT_ID.
+# All Safety Edge Functions require an authenticated Supabase user.
+
+[functions.create-contact-link-invitation]
+verify_jwt = true
+
+[functions.create-incident-access-token]
+verify_jwt = true
+
+[functions.get-incident-view]
+verify_jwt = true
+
+[functions.grant-incident-access]
+verify_jwt = true
+
+[functions.link-trusted-contact]
+verify_jwt = true
+
+[functions.redeem-contact-link-invitation]
+verify_jwt = true
+
+[functions.send-sos-notification]
+verify_jwt = true
