@@ -26,6 +26,9 @@ jobs:
       - name: Expo Doctor
         run: npx expo-doctor
 
+      - name: Validate native prebuild
+        run: npx expo prebuild --no-install --non-interactive
+
       - name: Typecheck
         run: npm run typecheck
 
