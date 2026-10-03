@@ -104,6 +104,28 @@ export default function App() {
     }
   };
 
+  const openRecipientIncident = async (incidentId: string) => {
+    if (!isSupabaseConfigured || !incidentId) return;
+    const user = await getCurrentUser();
+    if (!user?.id) {
+      await AsyncStorage.setItem("safety.pendingIncidentView.v1", incidentId);
+      return;
+    }
+    try {
+      const view = await getGrantedIncident(incidentId);
+      await AsyncStorage.removeItem("safety.pendingIncidentView.v1");
+      setRecipientIncidentId(incidentId);
+      setRecipientView(view);
+      setScreen("recipientEmergency");
+    } catch (error) {
+      console.error("Emergency access denied", error);
+      Alert.alert(
+        "Emergency access unavailable",
+        "You are not authorized to view this emergency, or the access has expired.",
+      );
+    }
+  };
+
   const redeemInvitationToken = async (token: string) => {
     if (!isSupabaseConfigured || !token) return;
     const user = await getCurrentUser();
@@ -164,10 +186,18 @@ export default function App() {
         await registerNotificationDevice();
         const pendingToken = await AsyncStorage.getItem("safety.pendingContactInvite.v1");
         if (pendingToken) await redeemInvitationToken(pendingToken);
+        const pendingIncidentId = await AsyncStorage.getItem("safety.pendingIncidentView.v1");
+        if (pendingIncidentId) await openRecipientIncident(pendingIncidentId);
       } catch (error) {
         console.error("Post-auth Safety sync failed", error);
       }
     };
+
+    const pushTokenSubscription = Notifications.addPushTokenListener(() => {
+      setTimeout(() => {
+        void registerNotificationDevice();
+      }, 0);
+    });
 
     const authSubscription = onAuthStateChange(async (event) => {
       if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") {
@@ -188,6 +218,7 @@ export default function App() {
     return () => {
       active = false;
       authSubscription.data.subscription.unsubscribe();
+      pushTokenSubscription.remove();
       subscription.remove();
     };
   }, []);
@@ -195,32 +226,21 @@ export default function App() {
   const audioStartedAtRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const openIncident = async (incidentId: string) => {
-      try {
-        const view = await getGrantedIncident(incidentId);
-        setRecipientIncidentId(incidentId);
-        setRecipientView(view);
-        setScreen("recipientEmergency");
-      } catch (error) {
-        console.error("Emergency access denied", error);
-        Alert.alert("Emergency access unavailable", "You are not authorized to view this emergency, or the access has expired.");
-      }
-    };
-
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data;
       if (data?.type === "SOS_ACTIVE" && typeof data.incidentId === "string") {
-        void openIncident(data.incidentId);
+        void openRecipientIncident(data.incidentId);
       }
     });
 
     void Notifications.getLastNotificationResponseAsync().then((response) => {
       const data = response?.notification.request.content.data;
       if (data?.type === "SOS_ACTIVE" && typeof data.incidentId === "string") {
-        void openIncident(data.incidentId);
+        void openRecipientIncident(data.incidentId);
       }
     });
 
+    return () => subscription.remove();
   }, []);
 
   useEffect(() => {
