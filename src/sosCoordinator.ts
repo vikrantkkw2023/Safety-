@@ -47,3 +47,12 @@ export async function endAndSyncIncident(
     return { synced: false, queued: true };
   }
 }
+
+
+export type AudioEvidence = {
+  incidentId: string;
+  uri: string;
+  startedAt: string;
+  endedAt: string | null;
+  status: "LOCAL_PENDING_UPLOAD" | "UPLOADED" | "FAILED";
+};
