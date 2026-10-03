@@ -225,6 +225,14 @@ create policy "audio owner delete"
   );
 
 
+-- Trusted-contact account linking.
+-- A contact can be linked only by an authenticated, verified workflow.
+alter table public.emergency_contacts
+  add column if not exists linked_user_id uuid references auth.users(id) on delete set null;
+
+create index if not exists emergency_contacts_linked_user_idx
+  on public.emergency_contacts(linked_user_id);
+
 -- Controlled access for trusted contacts viewing an active emergency.
 create table if not exists public.incident_access_grants (
   id uuid primary key default gen_random_uuid(),
