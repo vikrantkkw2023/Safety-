@@ -4,6 +4,7 @@ import {
   Linking,
   SafeAreaView,
   ScrollView,
+  Share,
   Modal,
   StatusBar,
   StyleSheet,
@@ -21,7 +22,7 @@ import { getCountries, getCountryCallingCode } from "libphonenumber-js";
 import { isDuplicatePhone, isValidActiveIncident, isValidPhone, normalizePhone, validateCountryPhone } from "./src/safetyRules";
 import { persistAndSyncIncident, endAndSyncIncident } from "./src/sosCoordinator";
 import { initializeBackendSync, recoverBackendContacts } from "./src/appSync";
-import { createEmailAccount, getActiveIncident, getCurrentUser, resetEmailPassword, signInEmailAccount, signOutAccount, getGrantedIncident } from "./src/backend";
+import { createEmailAccount, getActiveIncident, getCurrentUser, resetEmailPassword, signInEmailAccount, signOutAccount, getGrantedIncident, createContactLinkInvitation, redeemContactLinkInvitation } from "./src/backend";
 import { mergeContacts } from "./src/contactMerge";
 import { syncContactWithFallback } from "./src/contactSync";
 import { syncProfileWithFallback } from "./src/profileSync";
@@ -83,6 +84,65 @@ export default function App() {
   const [relationship, setRelationship] = useState("");
   const [busy, setBusy] = useState(false);
   const [storageReady, setStorageReady] = useState(false);
+  const handleInviteContact = async (contact: Contact) => {
+    if (!isSupabaseConfigured) {
+      Alert.alert("Account linking unavailable", "Connect the Safety backend before inviting a trusted contact.");
+      return;
+    }
+    try {
+      const invitation = await createContactLinkInvitation(contact.id);
+      const link = `safety://link?token=${encodeURIComponent(invitation.token)}`;
+      await Share.share({
+        title: "Join my Safety trusted contacts",
+        message: `Join me as a trusted contact in Safety. Open this link in Safety: ${link}`,
+        url: link,
+      });
+    } catch (error) {
+      console.error("Trusted-contact invitation failed", error);
+      Alert.alert("Invitation failed", "Safety could not create the invitation. Please try again.");
+    }
+  };
+
+  const redeemInvitationToken = async (token: string) => {
+    if (!isSupabaseConfigured || !token) return;
+    try {
+      await redeemContactLinkInvitation(token);
+      Alert.alert("Trusted contact connected", "This Safety account is now linked as a trusted contact.");
+      const recovered = await recoverBackendContacts();
+      if (recovered) {
+        setContacts(recovered.map((item) => ({
+          id: item.id,
+          name: item.name,
+          phone: item.phone,
+          relationship: item.relationship ?? "",
+        })));
+      }
+    } catch (error) {
+      console.error("Trusted-contact invitation redemption failed", error);
+      Alert.alert("Invitation unavailable", "This invitation may be expired, already used, or not intended for this account.");
+    }
+  };
+
+  useEffect(() => {
+    const handleUrl = ({ url }: { url: string }) => {
+      try {
+        const parsed = new URL(url);
+        const token = parsed.searchParams.get("token");
+        if (parsed.protocol === "safety:" && parsed.host === "link" && token) {
+          void redeemInvitationToken(token);
+        }
+      } catch (error) {
+        console.error("Safety deep-link handling failed", error);
+      }
+    };
+    void Linking.getInitialURL().then((url) => {
+      if (url) handleUrl({ url });
+    });
+    const subscription = Linking.addEventListener("url", handleUrl);
+    return () => subscription.remove();
+  }, []);
+
+
   const sosInFlightRef = useRef(false);
   const audioRecorder = useAudioRecorder({ ...RecordingPresets.HIGH_QUALITY, directory: "document" });
   const audioRecordingRef = useRef(false);
