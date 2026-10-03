@@ -286,6 +286,19 @@ create policy "live location owner access"
     )
   );
 
+create policy "live location granted recipient access"
+  on public.incident_live_locations for select
+  using (
+    exists (
+      select 1
+      from public.incident_access_grants g
+      where g.incident_id = incident_live_locations.incident_id
+        and g.recipient_user_id = auth.uid()
+        and g.revoked_at is null
+        and g.expires_at > now()
+    )
+  );
+
 -- Opaque, short-lived emergency access tokens. Only a hash is stored.
 create table if not exists public.incident_access_tokens (
   id uuid primary key default gen_random_uuid(),
