@@ -1,20 +1,41 @@
 import { Platform } from "react-native";
+import * as Notifications from "expo-notifications";
 import { getCurrentUser, upsertNotificationDevice } from "./backend";
 import { isSupabaseConfigured } from "./supabase";
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 export type NotificationRegistrationResult =
   | { registered: true; token: string }
   | { registered: false; reason: "NOT_CONFIGURED" | "NO_SESSION" | "PERMISSION_DENIED" | "UNAVAILABLE" };
 
-export async function registerNotificationDevice(
-  getToken: () => Promise<string | null>,
-): Promise<NotificationRegistrationResult> {
+export async function registerNotificationDevice(): Promise<NotificationRegistrationResult> {
   if (!isSupabaseConfigured) return { registered: false, reason: "NOT_CONFIGURED" };
 
   const user = await getCurrentUser();
   if (!user?.id) return { registered: false, reason: "NO_SESSION" };
 
-  const token = await getToken();
+  const permissions = await Notifications.getPermissionsAsync();
+  let finalStatus = permissions.status;
+
+  if (finalStatus !== "granted") {
+    const requested = await Notifications.requestPermissionsAsync();
+    finalStatus = requested.status;
+  }
+
+  if (finalStatus !== "granted") {
+    return { registered: false, reason: "PERMISSION_DENIED" };
+  }
+
+  const tokenResult = await Notifications.getExpoPushTokenAsync();
+  const token = tokenResult.data;
   if (!token) return { registered: false, reason: "UNAVAILABLE" };
 
   const platform = Platform.OS === "ios" ? "ios" : "android";
