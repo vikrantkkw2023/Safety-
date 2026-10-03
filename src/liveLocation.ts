@@ -71,6 +71,7 @@ if (!TaskManager.isTaskDefined(BACKGROUND_LOCATION_TASK)) {
 }
 
 export async function startLiveLocation(incidentId: string) {
+  await AsyncStorage.setItem(ACTIVE_INCIDENT_KEY, JSON.stringify({ id: incidentId, status: "ACTIVE" }));
   const foreground = await Location.getForegroundPermissionsAsync();
   if (foreground.status !== "granted") {
     throw new Error("LOCATION_PERMISSION_DENIED");
@@ -101,6 +102,7 @@ export async function startLiveLocation(incidentId: string) {
 }
 
 export async function stopLiveLocation() {
+  await AsyncStorage.removeItem(ACTIVE_INCIDENT_KEY);
   const registered = await Location.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
   if (registered) {
     await Location.stopLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
