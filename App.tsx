@@ -904,9 +904,14 @@ export default function App() {
                 <Text style={styles.contactName}>{contact.name}</Text>
                 <Text style={styles.contactMeta}>{contact.relationship} · {contact.phone}</Text>
               </View>
-              <TouchableOpacity onPress={() => removeContact(contact.id)}>
-                <Text style={styles.removeText}>Remove</Text>
-              </TouchableOpacity>
+              <View style={{ alignItems: "flex-end", gap: 6 }}>
+                <TouchableOpacity onPress={() => handleInviteContact(contact)}>
+                  <Text style={styles.linkText}>Invite to Safety</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => removeContact(contact.id)}>
+                  <Text style={styles.removeText}>Remove</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ))}
         </ScrollView>
