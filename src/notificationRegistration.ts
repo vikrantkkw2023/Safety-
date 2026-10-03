@@ -1,4 +1,5 @@
 import { Platform } from "react-native";
+import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
 import { getCurrentUser, upsertNotificationDevice } from "./backend";
 import { isSupabaseConfigured } from "./supabase";
@@ -34,7 +35,10 @@ export async function registerNotificationDevice(): Promise<NotificationRegistra
     return { registered: false, reason: "PERMISSION_DENIED" };
   }
 
-  const tokenResult = await Notifications.getExpoPushTokenAsync();
+  const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+  if (!projectId) return { registered: false, reason: "UNAVAILABLE" };
+
+  const tokenResult = await Notifications.getExpoPushTokenAsync({ projectId });
   const token = tokenResult.data;
   if (!token) return { registered: false, reason: "UNAVAILABLE" };
 
