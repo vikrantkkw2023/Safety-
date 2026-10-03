@@ -19,7 +19,7 @@ import { AudioModule, RecordingPresets, setAudioModeAsync, useAudioRecorder } fr
 import * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getCountries, getCountryCallingCode } from "libphonenumber-js";
-import { isDuplicatePhone, isValidActiveIncident, isValidPhone, normalizePhone, validateCountryPhone } from "./src/safetyRules";
+import { isDuplicatePhone, isValidActiveIncident, isValidPhone, normalizePhone, validateCountryPhone, validateInternationalPhone } from "./src/safetyRules";
 import { persistAndSyncIncident, endAndSyncIncident } from "./src/sosCoordinator";
 import { initializeBackendSync, recoverBackendContacts } from "./src/appSync";
 import { createEmailAccount, getActiveIncident, getCurrentUser, resetEmailPassword, signInEmailAccount, signOutAccount, getGrantedIncident, notifyActiveIncident, createContactLinkInvitation, redeemContactLinkInvitation } from "./src/backend";
@@ -511,7 +511,7 @@ export default function App() {
       return;
     }
 
-    const phoneValidation = validateCountryPhone(cleanPhone, signupCountry);
+    const phoneValidation = validateInternationalPhone(cleanPhone);
     if (!phoneValidation.valid || !phoneValidation.e164) {
       Alert.alert(
         "Invalid phone number",
@@ -938,7 +938,7 @@ export default function App() {
             <TextInput
               value={phone}
               onChangeText={setPhone}
-              placeholder="Phone number"
+              placeholder="Phone number (include +country code)"
               keyboardType="phone-pad"
               style={styles.input}
             />
