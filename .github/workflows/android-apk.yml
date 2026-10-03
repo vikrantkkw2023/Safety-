@@ -10,7 +10,6 @@ on:
       - "app.json"
       - "eas.json"
       - "package.json"
-      - "package-lock.json"
       - "tests/**"
       - ".github/workflows/android-apk.yml"
 
@@ -30,7 +29,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22.13.0
-          cache: npm
 
       - name: Install dependencies
         run: npm install
@@ -48,7 +46,12 @@ jobs:
           set -euo pipefail
           test -n "$EXPO_TOKEN"
           npx eas-cli@latest init --force --non-interactive
-          npx eas-cli@latest build             --platform android             --profile preview             --non-interactive             --wait             --json > eas-build.json
+          npx eas-cli@latest build \
+            --platform android \
+            --profile preview \
+            --non-interactive \
+            --wait \
+            --json > eas-build.json
 
       - name: Download built APK
         env:
@@ -57,7 +60,9 @@ jobs:
         run: |
           set -euo pipefail
           BUILD_ID="$(node -e 'const fs=require("fs"); const raw=fs.readFileSync("eas-build.json","utf8"); const data=JSON.parse(raw); const build=Array.isArray(data) ? data[0] : data; if(!build?.id) process.exit(2); process.stdout.write(build.id)')"
-          npx eas-cli@latest build:download             --build-id "$BUILD_ID"             --non-interactive
+          npx eas-cli@latest build:download \
+            --build-id "$BUILD_ID" \
+            --non-interactive
           APK="$(find . -maxdepth 2 -type f -name "*.apk" | head -n 1)"
           test -n "$APK"
           cp "$APK" Safety-test.apk
