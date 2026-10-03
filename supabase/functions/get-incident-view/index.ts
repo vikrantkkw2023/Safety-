@@ -15,7 +15,22 @@ export default {
       if (!incident) return Response.json({error:"INCIDENT_NOT_FOUND"},{status:404});
       const { data: owner } = await ctx.supabaseAdmin.from("profiles").select("name").eq("id",incident.user_id).maybeSingle();
       const { data: location } = await ctx.supabaseAdmin.from("incident_live_locations").select("latitude,longitude,accuracy,recorded_at").eq("incident_id",incidentId).order("recorded_at",{ascending:false}).limit(1).maybeSingle();
-      return Response.json({incident:{id:incident.id,status:incident.status,started_at:incident.started_at,latitude:incident.latitude,longitude:incident.longitude,accuracy:incident.accuracy,owner_name:owner?.name??null},latest_location:location??null});
+      const { data: acknowledgement } = await ctx.supabaseAdmin
+        .from("incident_acknowledgements")
+        .select("acknowledged_at")
+        .eq("incident_id", incidentId)
+        .eq("recipient_user_id", recipientId)
+        .maybeSingle();
+      const { count: acknowledgementCount } = await ctx.supabaseAdmin
+        .from("incident_acknowledgements")
+        .select("id", { count: "exact", head: true })
+        .eq("incident_id", incidentId);
+      return Response.json({
+        incident:{id:incident.id,status:incident.status,started_at:incident.started_at,latitude:incident.latitude,longitude:incident.longitude,accuracy:incident.accuracy,owner_name:owner?.name??null},
+        latest_location:location??null,
+        acknowledgement: acknowledgement?.acknowledged_at ? { acknowledged_at: acknowledgement.acknowledged_at } : null,
+        acknowledgement_count: acknowledgementCount ?? 0,
+      });
     } catch (error) { console.error(error); return Response.json({error:"INCIDENT_VIEW_FAILED"},{status:500}); }
   }),
 };
