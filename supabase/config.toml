@@ -21,4 +21,4 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.check-notification-receipts]
-verify_jwt = true
+verify_jwt = false
