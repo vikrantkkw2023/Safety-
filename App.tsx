@@ -21,7 +21,7 @@ import { getCountries, getCountryCallingCode } from "libphonenumber-js";
 import { isDuplicatePhone, isValidActiveIncident, isValidPhone, normalizePhone, validateCountryPhone } from "./src/safetyRules";
 import { persistAndSyncIncident, endAndSyncIncident } from "./src/sosCoordinator";
 import { initializeBackendSync, recoverBackendContacts } from "./src/appSync";
-import { createEmailAccount, getActiveIncident, getCurrentUser, resetEmailPassword, signInEmailAccount, signOutAccount } from "./src/backend";
+import { createEmailAccount, getActiveIncident, getCurrentUser, resetEmailPassword, signInEmailAccount, signOutAccount, getGrantedIncident } from "./src/backend";
 import { mergeContacts } from "./src/contactMerge";
 import { syncContactWithFallback } from "./src/contactSync";
 import { syncProfileWithFallback } from "./src/profileSync";
@@ -65,7 +65,9 @@ export default function App() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [activeIncident, setActiveIncident] = useState<Incident | null>(null);
   const [countdown, setCountdown] = useState<number | null>(null);
-  const [screen, setScreen] = useState<"home" | "contacts" | "signup" | "about">("signup");
+  const [screen, setScreen] = useState<"home" | "contacts" | "signup" | "about" | "recipientEmergency">("signup");
+  const [recipientIncidentId, setRecipientIncidentId] = useState<string | null>(null);
+  const [recipientView, setRecipientView] = useState<Awaited<ReturnType<typeof getGrantedIncident>> | null>(null);
   const [profile, setProfile] = useState<{ name: string; country: string; phone: string } | null>(null);
   const [signupName, setSignupName] = useState("");
   const [signupCountry, setSignupCountry] = useState("");
@@ -88,14 +90,81 @@ export default function App() {
   const liveLocationSubscriptionRef = useRef<{ remove: () => void } | null>(null);
 
   useEffect(() => {
+    const openIncident = async (incidentId: string) => {
+      try {
+        const view = await getGrantedIncident(incidentId);
+        setRecipientIncidentId(incidentId);
+        setRecipientView(view);
+        setScreen("recipientEmergency");
+      } catch (error) {
+        console.error("Emergency access denied", error);
+        Alert.alert("Emergency access unavailable", "You are not authorized to view this emergency, or the access has expired.");
+      }
+    };
+
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data;
       if (data?.type === "SOS_ACTIVE" && typeof data.incidentId === "string") {
-        console.log("SOS notification opened", data.incidentId);
+        void openIncident(data.incidentId);
       }
     });
-    return () => subscription.remove();
+
+    void Notifications.getLastNotificationResponseAsync().then((response) => {
+      const data = response?.notification.request.content.data;
+      if (data?.type === "SOS_ACTIVE" && typeof data.incidentId === "string") {
+        void openIncident(data.incidentId);
+      }
+    });
+
+    if (screen === "recipientEmergency" && recipientView) {
+    const location = recipientView.latest_location ?? recipientView.incident;
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" />
+        <ScrollView contentContainerStyle={styles.content}>
+          <Text style={styles.title}>Active Emergency</Text>
+          <Text style={styles.subtitle}>
+            {recipientView.incident.owner_name ?? "Your trusted contact"} has an active SOS.
+          </Text>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Emergency status</Text>
+            <Text style={styles.cardText}>{recipientView.incident.status}</Text>
+            <Text style={styles.cardText}>Location updated: {location.recorded_at ?? recipientView.incident.started_at}</Text>
+            {location.accuracy != null && <Text style={styles.cardText}>GPS accuracy: {Math.round(location.accuracy)} m</Text>}
+          </View>
+          <TouchableOpacity style={styles.primaryButton} onPress={() => Linking.openURL(mapsUrl(location.latitude, location.longitude))}>
+            <Text style={styles.primaryButtonText}>Open location in Maps</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.secondaryButton} onPress={() => setScreen("home")}>
+            <Text style={styles.secondaryButtonText}>Close</Text>
+          </TouchableOpacity>
+          <Text style={styles.disclaimer}>Location visibility is limited to authorized trusted contacts and expires with the access grant.</Text>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  return () => subscription.remove();
   }, []);
+
+  useEffect(() => {
+    if (screen !== "recipientEmergency" || !recipientIncidentId) return;
+    let active = true;
+    const refresh = async () => {
+      try {
+        const view = await getGrantedIncident(recipientIncidentId);
+        if (active) setRecipientView(view);
+      } catch (error) {
+        console.error("Emergency location refresh failed", error);
+      }
+    };
+    void refresh();
+    const timer = setInterval(() => void refresh(), 5000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [screen, recipientIncidentId]);
 
   useEffect(() => {
     let mounted = true;
