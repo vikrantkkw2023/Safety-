@@ -264,6 +264,15 @@ export type IncidentHistoryRecord = IncidentRecord & {
   uploaded_evidence_count: number;
 };
 
+export async function deleteResolvedIncident(incidentId: string) {
+  const client = configuredClient();
+  if (!incidentId) throw new Error("INVALID_INCIDENT_ID");
+  const { error } = await client.rpc("delete_resolved_incident", {
+    p_incident_id: incidentId,
+  });
+  if (error) throw error;
+}
+
 export async function listIncidentHistory(userId: string, limit = 50): Promise<IncidentHistoryRecord[]> {
   const client = configuredClient();
   const safeLimit = Math.min(Math.max(Math.floor(limit), 1), 100);
