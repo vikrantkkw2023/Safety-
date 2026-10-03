@@ -63,6 +63,6 @@ test("versioned migration safely recreates named policies", async () => {
   const sql = await read("supabase/migrations/20261003_000001_initial_safety.sql");
   const policies = [...sql.matchAll(/create policy "([^"]+)"/g)].map((match) => match[1]);
   for (const policy of policies) {
-    assert.match(sql, new RegExp("drop policy if exists \\"" + policy.replace(/[.*+?^{}()|[\]\\]/g, "\\$&") + "\\""));
+    assert.equal(sql.includes(`drop policy if exists "${policy}"`), true);
   }
 });
