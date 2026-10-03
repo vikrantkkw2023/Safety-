@@ -70,10 +70,27 @@ create policy "contacts own rows"
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
-create policy "incidents own rows"
-  on public.emergency_incidents for all
+drop policy if exists "incidents own rows" on public.emergency_incidents;
+
+create policy "incidents owner read"
+  on public.emergency_incidents for select
+  using (auth.uid() = user_id);
+
+create policy "incidents owner insert"
+  on public.emergency_incidents for insert
+  with check (auth.uid() = user_id);
+
+create policy "incidents owner update"
+  on public.emergency_incidents for update
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+create policy "incidents owner delete resolved"
+  on public.emergency_incidents for delete
+  using (
+    auth.uid() = user_id
+    and status <> 'ACTIVE'
+  );
 
 -- IMPORTANT:
 -- Notification delivery to trusted contacts must not expose the Supabase
