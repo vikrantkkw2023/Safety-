@@ -167,7 +167,7 @@ export default function App() {
       }
     };
 
-    const authSubscription = onAuthStateChange((event) => {
+    const authSubscription = onAuthStateChange(async (event) => {
       if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") {
         setTimeout(() => void handleAuthChange(), 0);
       }
@@ -479,7 +479,7 @@ export default function App() {
   const countries = useMemo(
     () =>
       getCountries()
-        .map((code) => ({ code, name: countryName(code), callingCode: getCountryCallingCode(code) }))
+        .map((code) => ({ code, name: countryName(code), callingCode: getCountryCallingCode(code as import("libphonenumber-js").CountryCode) }))
         .sort((a, b) => a.name.localeCompare(b.name)),
     []
   );
@@ -932,7 +932,7 @@ export default function App() {
               <TouchableOpacity style={styles.countrySelector} onPress={() => setCountryPickerOpen(true)}>
                 <Text style={styles.countrySelectorText}>
                   {signupCountry
-                    ? `${countryName(signupCountry)}  +${getCountryCallingCode(signupCountry)}`
+                    ? `${countryName(signupCountry)}  +${getCountryCallingCode(signupCountry as import("libphonenumber-js").CountryCode)}`
                     : "Select country"}
                 </Text>
                 <Text>▼</Text>
@@ -1072,7 +1072,7 @@ export default function App() {
               </View>
               <View style={{ alignItems: "flex-end", gap: 6 }}>
                 <TouchableOpacity onPress={() => handleInviteContact(contact)}>
-                  <Text style={styles.linkText}>Invite to Safety</Text>
+                  <Text style={styles.authLink}>Invite to Safety</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => removeContact(contact.id)}>
                   <Text style={styles.removeText}>Remove</Text>
@@ -1163,13 +1163,13 @@ export default function App() {
             {recipientView.incident.owner_name ?? "Your trusted contact"} has an active SOS.
           </Text>
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Emergency status</Text>
-            <Text style={styles.cardText}>{recipientView.incident.status}</Text>
+            <Text style={styles.sectionTitle}>Emergency status</Text>
+            <Text style={styles.smallText}>{recipientView.incident.status}</Text>
             <Text style={styles.cardText}>
-              Location updated: {location.recorded_at ?? recipientView.incident.started_at}
+              Location updated: {"recorded_at" in location ? location.recorded_at : recipientView.incident.started_at}
             </Text>
             {location.accuracy != null && (
-              <Text style={styles.cardText}>GPS accuracy: {Math.round(location.accuracy)} m</Text>
+              <Text style={styles.smallText}>GPS accuracy: {Math.round(location.accuracy)} m</Text>
             )}
           </View>
           <TouchableOpacity
