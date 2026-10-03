@@ -64,19 +64,5 @@ export async function registerNotificationDevice(): Promise<NotificationRegistra
     platform,
   });
 
-  const tokenSubscription = Notifications.addPushTokenListener(async (nextToken) => {
-    try {
-      const currentUser = await getCurrentUser();
-      if (!currentUser?.id || !nextToken?.data) return;
-      await upsertNotificationDevice(currentUser.id, {
-        expo_push_token: nextToken.data,
-        platform: Platform.OS === "ios" ? "ios" : "android",
-      });
-    } catch (error) {
-      console.error("Push token refresh registration failed", error);
-    }
-  });
-
-  tokenSubscription.remove();
   return { registered: true, token };
 }
