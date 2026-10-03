@@ -678,15 +678,16 @@ export default function App() {
       }).catch((error) => console.error("Live location could not start", error));
 
       // Local activation is authoritative for the user experience; backend sync is best-effort.
+      let syncResult: Awaited<ReturnType<typeof persistAndSyncIncident>> | null = null;
       try {
-        const syncResult = await persistAndSyncIncident(incident);
+        syncResult = await persistAndSyncIncident(incident);
       } catch (syncError) {
         console.error("Incident backend sync failed", syncError);
       }
 
       // Server-side push notification is best-effort. The local SOS remains active if
       // authentication, internet, or the push provider is unavailable.
-      if (isSupabaseConfigured && syncResult.synced) {
+      if (isSupabaseConfigured && syncResult?.synced) {
         try {
           await notifyActiveIncident(incident.id);
         } catch (notificationError) {
