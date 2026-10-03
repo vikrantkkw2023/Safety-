@@ -23,7 +23,11 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Safety uses your location when you activate SOS so your trusted contacts can find you."
+          "locationWhenInUsePermission": "Safety uses your location when you activate SOS so your trusted contacts can find you.",
+          "locationAlwaysAndWhenInUsePermission": "Safety uses your location during an active SOS so your trusted contacts can follow your emergency location.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
       ],
       "expo-notifications",
