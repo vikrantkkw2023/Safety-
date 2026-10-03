@@ -71,7 +71,7 @@ export default {
 
       if (sentError) throw sentError;
       const sentDeviceIds = new Set((alreadySent ?? []).map((row) => row.device_id));
-      const pending = devices.filter((device) => !sentDeviceIds.has(device.id));
+      const pending = devices.filter((device) => !sentDeviceIds.has(device.id) && device.expo_push_token);
 
       if (!pending.length) return Response.json({ ok: true, sent: 0, skipped: devices.length });
 
@@ -110,9 +110,25 @@ export default {
 
       const { error: deliveryError } = await ctx.supabaseAdmin
         .from("notification_deliveries")
-        .insert(deliveryRows);
+        .upsert(deliveryRows, { onConflict: "incident_id,device_id" });
 
       if (deliveryError) throw deliveryError;
+
+      const staleDeviceIds = pending
+        .filter((device, index) => {
+          const ticket = tickets[index];
+          return ticket?.status === "error" &&
+            typeof ticket.message === "string" &&
+            /DeviceNotRegistered|InvalidCredentials/i.test(ticket.message);
+        })
+        .map((device) => device.id);
+
+      if (staleDeviceIds.length) {
+        await ctx.supabaseAdmin
+          .from("notification_devices")
+          .delete()
+          .in("id", staleDeviceIds);
+      }
 
       return Response.json({
         ok: true,
