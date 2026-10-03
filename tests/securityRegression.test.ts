@@ -66,3 +66,16 @@ test("versioned migration safely recreates named policies", async () => {
     assert.equal(sql.includes(`drop policy if exists "${policy}"`), true);
   }
 });
+
+
+test("receipt worker is not exposed through Supabase JWT auth", async () => {
+  const config = await read("supabase/config.toml");
+  assert.match(config, /\[functions\.check-notification-receipts\]\s*verify_jwt = false/);
+});
+
+test("receipt worker is scheduled through the protected maintenance workflow", async () => {
+  const workflow = await read(".github/workflows/notification-receipts.yml");
+  assert.match(workflow, /cron: "\*\/15 \* \* \* \*"/);
+  assert.match(workflow, /x-safety-worker-secret/);
+  assert.match(workflow, /SUPABASE_PROJECT_ID/);
+});
