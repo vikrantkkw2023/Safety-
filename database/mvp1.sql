@@ -134,3 +134,62 @@ alter table public.notification_devices
 alter table public.notification_devices
   add constraint notification_devices_token_length
   check (char_length(expo_push_token) between 10 and 512);
+
+
+create table if not exists public.incident_audio_evidence (
+  id uuid primary key default gen_random_uuid(),
+  incident_id uuid not null references public.emergency_incidents(id) on delete cascade,
+  storage_path text not null,
+  started_at timestamptz not null,
+  ended_at timestamptz,
+  status text not null check (status in ('LOCAL_PENDING_UPLOAD','UPLOADED','FAILED')),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists incident_audio_evidence_incident_idx
+  on public.incident_audio_evidence(incident_id);
+
+alter table public.incident_audio_evidence enable row level security;
+
+create policy "audio evidence owner access"
+  on public.incident_audio_evidence for all
+  using (
+    exists (
+      select 1 from public.emergency_incidents i
+      where i.id = incident_audio_evidence.incident_id
+        and i.user_id = auth.uid()
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.emergency_incidents i
+      where i.id = incident_audio_evidence.incident_id
+        and i.user_id = auth.uid()
+    )
+  );
+
+create table if not exists public.incident_audio_uploads (
+  id uuid primary key default gen_random_uuid(),
+  evidence_id uuid not null references public.incident_audio_evidence(id) on delete cascade,
+  attempt_number integer not null check (attempt_number > 0),
+  status text not null check (status in ('STARTED','SUCCEEDED','FAILED')),
+  error_message text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists incident_audio_uploads_evidence_idx
+  on public.incident_audio_uploads(evidence_id);
+
+alter table public.incident_audio_uploads enable row level security;
+
+create policy "audio upload owner read"
+  on public.incident_audio_uploads for select
+  using (
+    exists (
+      select 1
+      from public.incident_audio_evidence e
+      join public.emergency_incidents i on i.id = e.incident_id
+      where e.id = incident_audio_uploads.evidence_id
+        and i.user_id = auth.uid()
+    )
+  );
