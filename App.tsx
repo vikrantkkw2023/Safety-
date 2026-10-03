@@ -155,6 +155,21 @@ export default function App() {
     if (!isSupabaseConfigured) return;
     let active = true;
     let lastState = AppState.currentState;
+
+    const syncAfterAuth = async () => {
+      if (!active || !(await getCurrentUser())?.id) return;
+      try {
+        await registerNotificationDevice();
+        const pendingToken = await AsyncStorage.getItem("safety.pendingContactInvite.v1");
+        if (pendingToken) {
+          await redeemInvitationToken(pendingToken);
+        }
+      } catch (error) {
+        console.error("Post-auth Safety sync failed", error);
+      }
+    };
+    void syncAfterAuth();
+
     const subscription = AppState.addEventListener("change", (nextState) => {
       const becameActive = (lastState === "background" || lastState === "inactive") && nextState === "active";
       lastState = nextState;
