@@ -71,7 +71,7 @@ if (!TaskManager.isTaskDefined(BACKGROUND_LOCATION_TASK)) {
 }
 
 export async function startLiveLocation(incidentId: string) {
-  await AsyncStorage.setItem(ACTIVE_INCIDENT_KEY, JSON.stringify({ id: incidentId, status: "ACTIVE" }));
+  if (!incidentId) throw new Error("INVALID_INCIDENT_ID");
   const foreground = await Location.getForegroundPermissionsAsync();
   if (foreground.status !== "granted") {
     throw new Error("LOCATION_PERMISSION_DENIED");
@@ -87,7 +87,8 @@ export async function startLiveLocation(incidentId: string) {
     await Location.stopLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
   }
 
-  await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
+  try {
+    await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
     accuracy: Location.Accuracy.High,
     timeInterval: 5000,
     distanceInterval: 10,
@@ -98,7 +99,13 @@ export async function startLiveLocation(incidentId: string) {
       notificationBody: "Your emergency location is being shared with your trusted contacts.",
       notificationColor: "#D92D20",
     },
-  });
+    });
+    await AsyncStorage.setItem(ACTIVE_INCIDENT_KEY, JSON.stringify({ id: incidentId, status: "ACTIVE" }));
+  } catch (error) {
+    await AsyncStorage.removeItem(ACTIVE_INCIDENT_KEY);
+    await Location.stopLocationUpdatesAsync(BACKGROUND_LOCATION_TASK).catch(() => undefined);
+    throw error;
+  }
 }
 
 export async function stopLiveLocation() {
