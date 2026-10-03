@@ -39,11 +39,17 @@ export default {
 
       const recipientIds = [...new Set(
         (contacts ?? [])
+          .filter((contact) => typeof contact.linked_user_id === "string")
           .map((contact) => contact.linked_user_id)
           .filter((id): id is string => typeof id === "string" && id !== authData.user.id),
       )];
 
-      if (!recipientIds.length) return Response.json({ ok: true, sent: 0, skipped: 0 });
+      if (!recipientIds.length) return Response.json({
+        ok: true,
+        sent: 0,
+        skipped: contacts.length,
+        reason: "NO_LINKED_TRUSTED_CONTACTS",
+      });
 
       const grantExpiry = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
       const grantRows = recipientIds.map((recipientUserId) => ({
@@ -72,7 +78,7 @@ export default {
 
       if (sentError) throw sentError;
       const sentDeviceIds = new Set((alreadySent ?? []).map((row) => row.device_id));
-      const pending = devices.filter((device) => !sentDeviceIds.has(device.id) && device.expo_push_token);
+      const pending = devices.filter((device) => !sentDeviceIds.has(device.id) && typeof device.expo_push_token === "string" && device.expo_push_token.length > 0);
 
       if (!pending.length) return Response.json({ ok: true, sent: 0, skipped: devices.length });
 
