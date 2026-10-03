@@ -307,6 +307,24 @@ export async function notifyActiveIncident(incidentId: string) {
   return data as { ok: boolean; sent?: number; failed?: number; skipped?: number };
 }
 
+export async function createContactLinkInvitation(contactId: string) {
+  const client = configuredClient();
+  const { data, error } = await client.functions.invoke("create-contact-link-invitation", {
+    body: { contact_id: contactId },
+  });
+  if (error) throw error;
+  return data as { ok: boolean; token: string; expires_at: string };
+}
+
+export async function redeemContactLinkInvitation(token: string) {
+  const client = configuredClient();
+  const { data, error } = await client.functions.invoke("redeem-contact-link-invitation", {
+    body: { token },
+  });
+  if (error) throw error;
+  return data as { ok: boolean; contact_id: string };
+}
+
 export async function createIncidentAccessGrant(
   incidentId: string,
   recipientUserId: string,
