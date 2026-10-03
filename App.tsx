@@ -915,7 +915,9 @@ export default function App() {
         }
 
         await uploadAudioEvidence(currentUser.id, item.storagePath, item.localUri);
-        await updateAudioEvidenceStatus(currentUser.id, evidenceId, "UPLOADED");
+        const uploadedEvidenceId = evidenceId;
+        if (!uploadedEvidenceId) throw new Error("AUDIO_EVIDENCE_ID_MISSING");
+        await updateAudioEvidenceStatus(currentUser.id, uploadedEvidenceId, "UPLOADED");
         await removePendingAudioEvidence(item.id);
         const index = remaining.findIndex((candidate) => candidate.id === item.id);
         if (index >= 0) remaining.splice(index, 1);
@@ -923,11 +925,14 @@ export default function App() {
         console.error("Pending audio evidence retry failed", error);
         const index = remaining.findIndex((candidate) => candidate.id === item.id);
         if (index >= 0) {
-          remaining[index] = {
-            ...remaining[index],
-            evidenceId: item.evidenceId,
-            attempts: item.attempts + 1,
-          };
+          const queuedItem = remaining[index];
+          if (queuedItem) {
+            remaining[index] = {
+              ...queuedItem,
+              evidenceId: item.evidenceId,
+              attempts: item.attempts + 1,
+            };
+          }
         }
       }
     }
