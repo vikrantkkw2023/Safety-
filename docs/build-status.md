@@ -66,3 +66,16 @@ The local MVP must never be represented as guaranteed police, ambulance, or emer
 ## Important verification rule
 
 Code changes are committed to the repository, but a feature is not considered verified until typecheck/tests and real-device behavior have actually been observed. No passing test result is claimed here unless GitHub Actions or a real device provides that result.
+
+
+## Latest development pass
+
+- Expo SDK 57 migration started.
+- Android SOS notification channel added.
+- Notification-open handling added.
+- Controlled incident access grants added.
+- Short-lived emergency access-token storage added.
+- Live incident location table added with owner-only write access.
+- Foreground live-location publisher added.
+- SOS starts live-location updates and stops them when SOS ends.
+- Production verification remains pending until the SDK 57 dependency install/typecheck and real-device notification, audio, and location tests complete.
