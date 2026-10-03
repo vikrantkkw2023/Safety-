@@ -80,7 +80,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [storageReady, setStorageReady] = useState(false);
   const sosInFlightRef = useRef(false);
-  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const audioRecorder = useAudioRecorder({ ...RecordingPresets.HIGH_QUALITY, directory: "document" });
   const audioRecordingRef = useRef(false);
   const audioStartedAtRef = useRef<string | null>(null);
 
@@ -565,7 +565,9 @@ export default function App() {
             const endedAt = new Date().toISOString();
             const recordedAudioUri = await stopSOSAudio();
             if (recordedAudioUri && audioStartedAtRef.current && supabase) {
-              const storagePath = activeIncident.id + "/" + Date.now() + ".m4a";
+              const currentUser = await getCurrentUser();
+              if (!currentUser?.id) throw new Error("NO_AUTHENTICATED_USER");
+              const storagePath = currentUser.id + "/" + activeIncident.id + "/" + Date.now() + ".m4a";
               try {
                 const evidence = await createAudioEvidence(activeIncident.id, {
                   incident_id: activeIncident.id,
