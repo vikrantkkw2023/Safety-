@@ -11,7 +11,7 @@ test("enqueueOperation adds an operation", () => {
 });
 
 test("queue stays bounded at 50 items", () => {
-  let queue = [];
+  let queue: import("../src/syncQueue").SyncOperation[] = [];
   for (let i = 0; i < 55; i += 1) {
     queue = enqueueOperation(queue, {
       type: "PROFILE_UPSERT",
@@ -32,7 +32,7 @@ test("removeOperation ignores invalid indexes", () => {
 });
 
 test("removeOperation removes the requested item", () => {
-  const queue = [
+  const queue: import("../src/syncQueue").SyncOperation[] = [
     { type: "PROFILE_UPSERT", payload: { name: "A" } },
     { type: "PROFILE_UPSERT", payload: { name: "B" } },
   ];
