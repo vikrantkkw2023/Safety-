@@ -21,6 +21,7 @@ import { persistAndSyncIncident, endAndSyncIncident } from "./src/sosCoordinator
 import { initializeBackendSync, recoverBackendContacts } from "./src/appSync";
 import { getActiveIncident, getCurrentUser } from "./src/backend";
 import { mergeContacts } from "./src/contactMerge";
+import { syncProfileWithFallback } from "./src/profileSync";
 
 type Contact = {
   id: string;
@@ -210,6 +211,11 @@ export default function App() {
     const nextProfile = { name: cleanName, country: signupCountry, phone: validation.e164 };
     try {
       await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(nextProfile));
+      try {
+        await syncProfileWithFallback(nextProfile);
+      } catch (syncError) {
+        console.error("Profile backend sync failed", syncError);
+      }
       setProfile(nextProfile);
       setSignupPhone(validation.e164);
       setScreen("home");
