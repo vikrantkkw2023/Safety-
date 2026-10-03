@@ -63,6 +63,13 @@ export async function signOutAccount() {
   if (error) throw error;
 }
 
+export async function resetEmailPassword(email: string, redirectTo?: string) {
+  const client = configuredClient();
+  return client.auth.resetPasswordForEmail(email, {
+    redirectTo,
+  });
+}
+
 export async function upsertProfile(userId: string, profile: Omit<ProfileRecord, "id">) {
   const client = configuredClient();
   const { data, error } = await client
