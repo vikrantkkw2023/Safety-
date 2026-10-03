@@ -26,6 +26,7 @@ import { syncContactWithFallback } from "./src/contactSync";
 import { syncProfileWithFallback } from "./src/profileSync";
 import { onAuthStateChange } from "./src/backend";
 import { registerNotificationDevice } from "./src/notificationRegistration";
+import { createAudioEvidence, uploadAudioEvidence, updateAudioEvidenceStatus } from "./src/backend";
 import { isSupabaseConfigured } from "./src/supabase";
 import { normalizeEmail, validateEmail, validatePassword } from "./src/authRules";
 
@@ -81,6 +82,7 @@ export default function App() {
   const sosInFlightRef = useRef(false);
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const audioRecordingRef = useRef(false);
+  const audioStartedAtRef = useRef<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -377,6 +379,7 @@ export default function App() {
       await audioRecorder.prepareToRecordAsync();
       audioRecorder.record();
       audioRecordingRef.current = true;
+      audioStartedAtRef.current = new Date().toISOString();
     } catch (error) {
       console.error("SOS audio recording could not start", error);
       audioRecordingRef.current = false;
@@ -560,9 +563,27 @@ export default function App() {
         onPress: async () => {
           try {
             const endedAt = new Date().toISOString();
+            const recordedAudioUri = await stopSOSAudio();
+            if (recordedAudioUri && audioStartedAtRef.current && supabase) {
+              const storagePath = activeIncident.id + "/" + Date.now() + ".m4a";
+              try {
+                const evidence = await createAudioEvidence(activeIncident.id, {
+                  incident_id: activeIncident.id,
+                  storage_path: storagePath,
+                  started_at: audioStartedAtRef.current,
+                  ended_at: endedAt,
+                  status: "LOCAL_PENDING_UPLOAD",
+                });
+                await uploadAudioEvidence(activeIncident.id, storagePath, recordedAudioUri);
+                await updateAudioEvidenceStatus(activeIncident.id, evidence.id, "UPLOADED");
+              } catch (audioError) {
+                console.error("Audio evidence upload failed", audioError);
+              }
+            }
             // Clear the local active state immediately; backend resolution is best-effort and queued on failure.
             await AsyncStorage.removeItem(INCIDENT_KEY);
             setActiveIncident(null);
+            audioStartedAtRef.current = null;
             try {
               await endAndSyncIncident(activeIncident, endedAt);
             } catch (syncError) {
