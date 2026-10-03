@@ -28,7 +28,7 @@ import { syncProfileWithFallback } from "./src/profileSync";
 import { onAuthStateChange } from "./src/backend";
 import { registerNotificationDevice } from "./src/notificationRegistration";
 import { createAudioEvidence, uploadAudioEvidence, updateAudioEvidenceStatus } from "./src/backend";
-import { startLiveLocation } from "./src/liveLocation";
+import { startLiveLocation, stopLiveLocation } from "./src/liveLocation";
 import { isSupabaseConfigured } from "./src/supabase";
 import { normalizeEmail, validateEmail, validatePassword } from "./src/authRules";
 
@@ -500,9 +500,8 @@ export default function App() {
       await AsyncStorage.setItem(INCIDENT_KEY, JSON.stringify(incident));
       setActiveIncident(incident);
       void startSOSAudio();
-      void startLiveLocation(incident.id).then((subscription) => {
-        liveLocationSubscriptionRef.current?.remove();
-        liveLocationSubscriptionRef.current = subscription;
+      void startLiveLocation(incident.id).then(() => {
+        console.log("Background SOS location tracking started");
       }).catch((error) => console.error("Live location could not start", error));
 
       // Local activation is authoritative for the user experience; backend sync is best-effort.
@@ -582,6 +581,7 @@ export default function App() {
             const endedAt = new Date().toISOString();
             liveLocationSubscriptionRef.current?.remove();
             liveLocationSubscriptionRef.current = null;
+            await stopLiveLocation().catch((locationError) => console.error("Live location stop failed", locationError));
             const recordedAudioUri = await stopSOSAudio();
             if (recordedAudioUri && audioStartedAtRef.current && supabase) {
               const currentUser = await getCurrentUser();
@@ -599,6 +599,13 @@ export default function App() {
                 await updateAudioEvidenceStatus(activeIncident.id, evidence.id, "UPLOADED");
               } catch (audioError) {
                 console.error("Audio evidence upload failed", audioError);
+                try {
+                  if (typeof evidence !== "undefined") {
+                    await updateAudioEvidenceStatus(activeIncident.id, evidence.id, "FAILED");
+                  }
+                } catch (statusError) {
+                  console.error("Audio evidence failure status update failed", statusError);
+                }
               }
             }
             // Clear the local active state immediately; backend resolution is best-effort and queued on failure.
