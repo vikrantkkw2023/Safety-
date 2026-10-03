@@ -31,7 +31,7 @@ import { onAuthStateChange } from "./src/backend";
 import { registerNotificationDevice } from "./src/notificationRegistration";
 import { createAudioEvidence, uploadAudioEvidence, updateAudioEvidenceStatus } from "./src/backend";
 import { startLiveLocation, stopLiveLocation } from "./src/liveLocation";
-import { isSupabaseConfigured } from "./src/supabase";
+import { isSupabaseConfigured, supabase } from "./src/supabase";
 import { normalizeEmail, validateEmail, validatePassword } from "./src/authRules";
 
 type Contact = {
@@ -329,9 +329,16 @@ export default function App() {
           }
           const currentUser = await getCurrentUser();
           const remoteActive = currentUser?.id ? await getActiveIncident(currentUser.id) : null;
-          if (remoteActive && mounted && !savedIncident) {
+          if (remoteActive && mounted) {
+            let localIncident: Incident | null = null;
+            if (savedIncident) {
+              try {
+                const parsed = JSON.parse(savedIncident);
+                if (isValidActiveIncident(parsed)) localIncident = parsed;
+              } catch {}
+            }
             const recovered: Incident = {
-              id: remoteActive.client_local_id ?? remoteActive.id,
+              id: localIncident?.id ?? remoteActive.client_local_id ?? remoteActive.id,
               remoteId: remoteActive.id,
               latitude: remoteActive.latitude,
               longitude: remoteActive.longitude,
@@ -883,6 +890,49 @@ export default function App() {
             <Text style={styles.descriptionCenter}>
               Select your country first. The country calling code and phone validation will update automatically.
             </Text>
+
+            {isSupabaseConfigured && (
+              <View style={styles.card}>
+                <Text style={styles.sectionTitle}>{authMode === "signup" ? "Secure account" : "Sign in"}</Text>
+                <Text style={styles.smallText}>
+                  {authMode === "signup"
+                    ? "Create a Safety account to sync emergency data and trusted-contact links."
+                    : "Sign in to connect this device to your Safety account."}
+                </Text>
+                <TextInput
+                  value={authEmail}
+                  onChangeText={setAuthEmail}
+                  placeholder="Email"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  style={styles.input}
+                />
+                <TextInput
+                  value={authPassword}
+                  onChangeText={setAuthPassword}
+                  placeholder="Password"
+                  secureTextEntry
+                  autoCapitalize="none"
+                  style={styles.input}
+                />
+                <TouchableOpacity style={styles.primaryButton} onPress={handleEmailAuth} disabled={authBusy}>
+                  <Text style={styles.primaryButtonText}>
+                    {authBusy ? "Please wait…" : authMode === "signup" ? "Create secure account" : "Sign in"}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setAuthMode((mode) => mode === "signup" ? "signin" : "signup")}>
+                  <Text style={styles.authLink}>
+                    {authMode === "signup" ? "Already have an account? Sign in" : "Need an account? Create one"}
+                  </Text>
+                </TouchableOpacity>
+                {authMode === "signin" && (
+                  <TouchableOpacity onPress={handlePasswordReset}>
+                    <Text style={styles.authLink}>Forgot password?</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
 
             <View style={styles.card}>
               <TextInput
