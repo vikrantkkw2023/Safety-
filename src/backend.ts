@@ -287,7 +287,11 @@ export async function getSession() {
   return data.session;
 }
 
-export function onAuthStateChange(callback: Parameters<SupabaseClient["auth"]["onAuthStateChange"]>[0]) {
-  if (!supabase) return { data: { subscription: { unsubscribe: () => undefined } } };
+export function onAuthStateChange(
+  callback: Parameters<SupabaseClient["auth"]["onAuthStateChange"]>[0],
+) {
+  if (!supabase) {
+    return { data: { subscription: { unsubscribe: () => undefined } } };
+  }
   return supabase.auth.onAuthStateChange(callback);
 }
