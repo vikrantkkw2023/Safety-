@@ -116,35 +116,6 @@ export default function App() {
       }
     });
 
-    if (screen === "recipientEmergency" && recipientView) {
-    const location = recipientView.latest_location ?? recipientView.incident;
-    return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" />
-        <ScrollView contentContainerStyle={styles.content}>
-          <Text style={styles.title}>Active Emergency</Text>
-          <Text style={styles.subtitle}>
-            {recipientView.incident.owner_name ?? "Your trusted contact"} has an active SOS.
-          </Text>
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Emergency status</Text>
-            <Text style={styles.cardText}>{recipientView.incident.status}</Text>
-            <Text style={styles.cardText}>Location updated: {location.recorded_at ?? recipientView.incident.started_at}</Text>
-            {location.accuracy != null && <Text style={styles.cardText}>GPS accuracy: {Math.round(location.accuracy)} m</Text>}
-          </View>
-          <TouchableOpacity style={styles.primaryButton} onPress={() => Linking.openURL(mapsUrl(location.latitude, location.longitude))}>
-            <Text style={styles.primaryButtonText}>Open location in Maps</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => setScreen("home")}>
-            <Text style={styles.secondaryButtonText}>Close</Text>
-          </TouchableOpacity>
-          <Text style={styles.disclaimer}>Location visibility is limited to authorized trusted contacts and expires with the access grant.</Text>
-        </ScrollView>
-      </SafeAreaView>
-    );
-  }
-
-  return () => subscription.remove();
   }, []);
 
   useEffect(() => {
@@ -916,6 +887,43 @@ export default function App() {
 
           <Text style={styles.disclaimer}>
             This app does not guarantee police, ambulance, or other emergency response. If you are in immediate danger, use your device's official emergency calling service where available.
+          </Text>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  if (screen === "recipientEmergency" && recipientView) {
+    const location = recipientView.latest_location ?? recipientView.incident;
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" />
+        <ScrollView contentContainerStyle={styles.content}>
+          <Text style={styles.title}>Active Emergency</Text>
+          <Text style={styles.subtitle}>
+            {recipientView.incident.owner_name ?? "Your trusted contact"} has an active SOS.
+          </Text>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Emergency status</Text>
+            <Text style={styles.cardText}>{recipientView.incident.status}</Text>
+            <Text style={styles.cardText}>
+              Location updated: {location.recorded_at ?? recipientView.incident.started_at}
+            </Text>
+            {location.accuracy != null && (
+              <Text style={styles.cardText}>GPS accuracy: {Math.round(location.accuracy)} m</Text>
+            )}
+          </View>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={() => void Linking.openURL(mapsUrl(location.latitude, location.longitude))}
+          >
+            <Text style={styles.primaryButtonText}>Open location in Maps</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.secondaryButton} onPress={() => setScreen("home")}>
+            <Text style={styles.secondaryButtonText}>Close</Text>
+          </TouchableOpacity>
+          <Text style={styles.disclaimer}>
+            Location visibility is limited to authorized trusted contacts and expires with the access grant.
           </Text>
         </ScrollView>
       </SafeAreaView>
