@@ -1,4 +1,4 @@
-import { createContact, createIncident, findContactByPhone, findIncidentByLocalId, getSession, updateIncidentStatus } from "./backend";
+import { createContact, createIncident, findContactByPhone, findIncidentByLocalId, getSession, updateIncidentStatus, upsertProfile } from "./backend";
 import { loadSyncQueue, saveSyncQueue } from "./queueStorage";
 import { removeOperation, type SyncOperation } from "./syncQueue";
 
@@ -16,12 +16,19 @@ export async function retryPendingSync(): Promise<{ remaining: number; synced: n
     if (!operation) break;
 
     try {
-      if (operation.type === "CONTACT_CREATE") {
+      if (operation.type === "PROFILE_UPSERT") {
+        const name = operation.payload.name;
+        const countryCode = operation.payload.country_code;
         const phone = operation.payload.phone;
+        if (!name || !countryCode || !phone) throw new Error("INVALID_PROFILE_PAYLOAD");
+        await upsertProfile(session.user.id, { name, country_code: countryCode, phone });
+      } else if (operation.type === "CONTACT_CREATE") {
+        const phone = operation.payload.phone;
+        if (!phone) throw new Error("INVALID_CONTACT_PAYLOAD");
         const existing = await findContactByPhone(session.user.id, phone);
         if (!existing) {
           await createContact(session.user.id, {
-            name: operation.payload.name,
+            name: operation.payload.name ?? "Trusted contact",
             phone,
             relationship: operation.payload.relationship ?? null,
             country_code: operation.payload.country_code || null,
@@ -30,7 +37,6 @@ export async function retryPendingSync(): Promise<{ remaining: number; synced: n
       } else if (operation.type === "INCIDENT_CREATE") {
         const localId = operation.payload.local_id;
         if (!localId) throw new Error("MISSING_LOCAL_INCIDENT_ID");
-
         const existing = await findIncidentByLocalId(session.user.id, localId);
         if (!existing) {
           await createIncident(session.user.id, {
@@ -44,12 +50,8 @@ export async function retryPendingSync(): Promise<{ remaining: number; synced: n
       } else if (operation.type === "INCIDENT_STATUS") {
         const localId = operation.payload.incident_id;
         if (!localId) throw new Error("MISSING_LOCAL_INCIDENT_ID");
-
         const remote = await findIncidentByLocalId(session.user.id, localId);
-        if (!remote) {
-          // Preserve FIFO ordering: create must reach the server before its status.
-          break;
-        }
+        if (!remote) break;
 
         const status = operation.payload.status;
         if (status !== "RESOLVED" && status !== "CANCELLED" && status !== "ACTIVE") {
