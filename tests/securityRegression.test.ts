@@ -48,3 +48,12 @@ test("native background capabilities are explicitly configured", async () => {
   assert.equal((locationPlugin?.[1] as Record<string, unknown>)?.isIosBackgroundLocationEnabled, true);
   assert.equal((audioPlugin?.[1] as Record<string, unknown>)?.enableBackgroundRecording, true);
 });
+
+
+test("database enforces a one-way incident lifecycle", async () => {
+  const sql = await read("database/mvp1.sql");
+  assert.match(sql, /create or replace function public\.enforce_incident_lifecycle/);
+  assert.match(sql, /old\.status <> 'ACTIVE'/);
+  assert.match(sql, /INCIDENT_ALREADY_ENDED/);
+  assert.match(sql, /INCIDENT_IMMUTABLE_FIELDS/);
+});
