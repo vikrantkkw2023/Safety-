@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
+  AppState,
   Linking,
   SafeAreaView,
   ScrollView,
@@ -47,6 +48,7 @@ type Incident = {
   accuracy?: number;
   startedAt: string;
   status: "ACTIVE" | "RESOLVED";
+  remoteId?: string;
 };
 
 const CONTACTS_KEY = "safety.contacts.v1";
@@ -56,8 +58,6 @@ const PROFILE_KEY = "safety.profile.v1";
 // TEST-ONLY emergency service placeholder. This is intentionally invalid and
 // must never be dialed or messaged. Replace only after the emergency workflow
 // is fully tested and an authorized production integration is approved.
-const TEST_EMERGENCY_NUMBER = "+00 000 000 0000";
-
 function mapsUrl(lat: number, lon: number) {
   return `https://maps.google.com/?q=${lat},${lon}`;
 }
@@ -77,7 +77,6 @@ export default function App() {
   const [authPassword, setAuthPassword] = useState("");
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [authBusy, setAuthBusy] = useState(false);
-  const [supabaseAuthAvailable, setSupabaseAuthAvailable] = useState(false);
   const [countryPickerOpen, setCountryPickerOpen] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -213,7 +212,6 @@ export default function App() {
   }, []);
 
   const audioStartedAtRef = useRef<string | null>(null);
-  const liveLocationSubscriptionRef = useRef<{ remove: () => void } | null>(null);
 
   useEffect(() => {
     const openIncident = async (incidentId: string) => {
@@ -334,6 +332,7 @@ export default function App() {
           if (remoteActive && mounted && !savedIncident) {
             const recovered: Incident = {
               id: remoteActive.client_local_id ?? remoteActive.id,
+              remoteId: remoteActive.id,
               latitude: remoteActive.latitude,
               longitude: remoteActive.longitude,
               accuracy: remoteActive.accuracy ?? undefined,
@@ -543,9 +542,41 @@ export default function App() {
   };
 
   const removeContact = (id: string) => {
+    const contact = contacts.find((item) => item.id === id);
+    if (!contact) return;
     Alert.alert("Remove contact?", "This person will no longer receive SOS messages.", [
       { text: "Cancel", style: "cancel" },
-      { text: "Remove", style: "destructive", onPress: () => setContacts((c) => c.filter((x) => x.id !== id)) },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: () => {
+          setContacts((current) => current.filter((item) => item.id !== id));
+          void (async () => {
+            try {
+              const currentUser = await getCurrentUser();
+              if (currentUser?.id) {
+                const { deleteContactByPhone } = await import("./src/backend");
+                await deleteContactByPhone(currentUser.id, contact.phone);
+                return;
+              }
+              const raw = await AsyncStorage.getItem("safety.syncQueue.v1");
+              const queue = raw ? JSON.parse(raw) : [];
+              const next = Array.isArray(queue) ? queue : [];
+              next.push({ type: "CONTACT_DELETE", payload: { phone: contact.phone } });
+              await AsyncStorage.setItem("safety.syncQueue.v1", JSON.stringify(next.slice(-50)));
+            } catch (error) {
+              console.error("Contact backend deletion failed", error);
+              try {
+                const raw = await AsyncStorage.getItem("safety.syncQueue.v1");
+                const queue = raw ? JSON.parse(raw) : [];
+                const next = Array.isArray(queue) ? queue : [];
+                next.push({ type: "CONTACT_DELETE", payload: { phone: contact.phone } });
+                await AsyncStorage.setItem("safety.syncQueue.v1", JSON.stringify(next.slice(-50)));
+              } catch {}
+            }
+          })();
+        },
+      },
     ]);
   };
 
@@ -673,10 +704,6 @@ export default function App() {
       await AsyncStorage.setItem(INCIDENT_KEY, JSON.stringify(incident));
       setActiveIncident(incident);
       void startSOSAudio();
-      void startLiveLocation(incident.id).then(() => {
-        console.log("Background SOS location tracking started");
-      }).catch((error) => console.error("Live location could not start", error));
-
       // Local activation is authoritative for the user experience; backend sync is best-effort.
       let syncResult: Awaited<ReturnType<typeof persistAndSyncIncident>> | null = null;
       try {
@@ -685,13 +712,24 @@ export default function App() {
         console.error("Incident backend sync failed", syncError);
       }
 
-      // Server-side push notification is best-effort. The local SOS remains active if
-      // authentication, internet, or the push provider is unavailable.
-      if (isSupabaseConfigured && syncResult?.synced) {
+      if (syncResult?.remoteIncidentId) {
+        const remoteId = syncResult.remoteIncidentId;
+        const nextIncident = { ...incident, remoteId };
+        await AsyncStorage.setItem(INCIDENT_KEY, JSON.stringify(nextIncident));
+        setActiveIncident(nextIncident);
+
         try {
-          await notifyActiveIncident(incident.id);
-        } catch (notificationError) {
-          console.error("Trusted-contact push notification failed", notificationError);
+          await startLiveLocation(remoteId);
+        } catch (locationError) {
+          console.error("Live location could not start", locationError);
+        }
+
+        if (isSupabaseConfigured) {
+          try {
+            await notifyActiveIncident(remoteId);
+          } catch (notificationError) {
+            console.error("Trusted-contact push notification failed", notificationError);
+          }
         }
       }
 
@@ -763,31 +801,29 @@ export default function App() {
         onPress: async () => {
           try {
             const endedAt = new Date().toISOString();
-            liveLocationSubscriptionRef.current?.remove();
-            liveLocationSubscriptionRef.current = null;
             await stopLiveLocation().catch((locationError) => console.error("Live location stop failed", locationError));
             const recordedAudioUri = await stopSOSAudio();
-            if (recordedAudioUri && audioStartedAtRef.current && supabase) {
+            if (recordedAudioUri && audioStartedAtRef.current && supabase && activeIncident.remoteId) {
               const currentUser = await getCurrentUser();
               if (!currentUser?.id) throw new Error("NO_AUTHENTICATED_USER");
-              const storagePath = currentUser.id + "/" + activeIncident.id + "/" + Date.now() + ".m4a";
+              const storagePath = currentUser.id + "/" + activeIncident.remoteId + "/" + Date.now() + ".m4a";
               let evidenceId: string | null = null;
               try {
-                const evidence = await createAudioEvidence(activeIncident.id, {
-                  incident_id: activeIncident.id,
+                const evidence = await createAudioEvidence(currentUser.id, {
+                  incident_id: activeIncident.remoteId,
                   storage_path: storagePath,
                   started_at: audioStartedAtRef.current,
                   ended_at: endedAt,
                   status: "LOCAL_PENDING_UPLOAD",
                 });
                 evidenceId = evidence.id;
-                await uploadAudioEvidence(activeIncident.id, storagePath, recordedAudioUri);
-                await updateAudioEvidenceStatus(activeIncident.id, evidence.id, "UPLOADED");
+                await uploadAudioEvidence(currentUser.id, storagePath, recordedAudioUri);
+                await updateAudioEvidenceStatus(currentUser.id, evidence.id, "UPLOADED");
               } catch (audioError) {
                 console.error("Audio evidence upload failed", audioError);
                 try {
                   if (evidenceId) {
-                    await updateAudioEvidenceStatus(activeIncident.id, evidenceId, "FAILED");
+                    await updateAudioEvidenceStatus(currentUser.id, evidenceId, "FAILED");
                   }
                 } catch (statusError) {
                   console.error("Audio evidence failure status update failed", statusError);
