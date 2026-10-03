@@ -27,7 +27,7 @@ export function parseSyncQueue(raw: string | null): SyncOperation[] {
   try {
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isSyncOperation);
+    return parsed.filter(isSyncOperation).slice(-MAX_QUEUE_ITEMS);
   } catch {
     return [];
   }
