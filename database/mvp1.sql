@@ -98,6 +98,60 @@ create policy "incidents owner delete resolved"
 -- for production notifications.
 
 
+-- Incident lifecycle is one-way: ACTIVE -> RESOLVED/CANCELLED.
+-- Terminal incidents cannot be reactivated or edited.
+create or replace function public.enforce_incident_lifecycle()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $
+begin
+  if old.user_id is distinct from new.user_id
+    or old.client_local_id is distinct from new.client_local_id
+    or old.latitude is distinct from new.latitude
+    or old.longitude is distinct from new.longitude
+    or old.accuracy is distinct from new.accuracy
+    or old.started_at is distinct from new.started_at then
+    raise exception 'INCIDENT_IMMUTABLE_FIELDS';
+  end if;
+
+  if old.status <> 'ACTIVE' then
+    if new.status is distinct from old.status
+      or new.ended_at is distinct from old.ended_at then
+      raise exception 'INCIDENT_ALREADY_ENDED';
+    end if;
+    return new;
+  end if;
+
+  if new.status = 'ACTIVE' then
+    if new.ended_at is not null then
+      raise exception 'ACTIVE_INCIDENT_CANNOT_HAVE_END_TIME';
+    end if;
+    return new;
+  end if;
+
+  if new.ended_at is null then
+    new.ended_at := now();
+  end if;
+
+  if new.ended_at < old.started_at then
+    raise exception 'INCIDENT_END_BEFORE_START';
+  end if;
+
+  return new;
+end;
+$;
+
+drop trigger if exists emergency_incident_lifecycle on public.emergency_incidents;
+
+create trigger emergency_incident_lifecycle
+before update on public.emergency_incidents
+for each row
+execute function public.enforce_incident_lifecycle();
+
+revoke all on function public.enforce_incident_lifecycle() from public, anon, authenticated;
+
 -- Prevent more than one ACTIVE incident per user at the database layer.
 create unique index if not exists emergency_incidents_one_active_per_user_idx
   on public.emergency_incidents(user_id)
@@ -145,10 +199,7 @@ create policy "notification device owner access"
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
-create policy "notification devices own rows"
-  on public.notification_devices for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+drop policy if exists "notification devices own rows" on public.notification_devices;
 
 -- Notification device hardening
 alter table public.notification_devices
