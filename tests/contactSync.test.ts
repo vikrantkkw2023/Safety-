@@ -13,5 +13,6 @@ test("contact sync falls back to local queue when no authenticated session exist
   const result = await syncContactWithFallback(contact, []);
 
   assert.equal(result.synced, false);
-  assert.deepEqual(result.queue, []);
+  assert.equal(result.queue.length, 1);
+  assert.equal(result.queue[0]?.type, "CONTACT_CREATE");
 });
