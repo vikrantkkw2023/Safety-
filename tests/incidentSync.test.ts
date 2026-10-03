@@ -15,4 +15,5 @@ test("incident creation queues safely when authentication is unavailable", async
   assert.equal(result.synced, false);
   assert.equal(result.queue.length, 1);
   assert.equal(result.queue[0]?.type, "INCIDENT_CREATE");
+  assert.equal(result.queue[0]?.payload.status, "ACTIVE");
 });
