@@ -25,7 +25,8 @@
         {
           "locationWhenInUsePermission": "Safety uses your location when you activate SOS so your trusted contacts can find you."
         }
-      ]
+      ],
+      "expo-notifications"
     ]
   }
 }
