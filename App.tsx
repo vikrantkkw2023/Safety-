@@ -86,6 +86,25 @@ export default function App() {
   const sosInFlightRef = useRef(false);
   const audioRecorder = useAudioRecorder({ ...RecordingPresets.HIGH_QUALITY, directory: "document" });
   const audioRecordingRef = useRef(false);
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let active = true;
+    const register = async () => {
+      try {
+        const result = await registerNotificationDevice();
+        if (active && !result.registered && result.reason !== "PERMISSION_DENIED") {
+          console.log("Push notification registration not available:", result.reason);
+        }
+      } catch (error) {
+        console.error("Push notification registration failed", error);
+      }
+    };
+    void register();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const audioStartedAtRef = useRef<string | null>(null);
   const liveLocationSubscriptionRef = useRef<{ remove: () => void } | null>(null);
 
