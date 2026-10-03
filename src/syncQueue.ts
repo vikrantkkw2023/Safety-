@@ -1,6 +1,7 @@
 export type SyncOperation =
   | { type: "PROFILE_UPSERT"; payload: Record<string, string> }
   | { type: "CONTACT_CREATE"; payload: Record<string, string | null> }
+  | { type: "CONTACT_DELETE"; payload: Record<string, string | null> }
   | { type: "INCIDENT_CREATE"; payload: Record<string, string | number | null> }
   | { type: "INCIDENT_STATUS"; payload: Record<string, string | null> };
 
@@ -36,7 +37,7 @@ function isSyncOperation(value: unknown): value is SyncOperation {
   if (!value || typeof value !== "object") return false;
   const item = value as Record<string, unknown>;
   if (typeof item.type !== "string" || !item.payload || typeof item.payload !== "object") return false;
-  return ["PROFILE_UPSERT", "CONTACT_CREATE", "INCIDENT_CREATE", "INCIDENT_STATUS"].includes(item.type);
+  return ["PROFILE_UPSERT", "CONTACT_CREATE", "CONTACT_DELETE", "INCIDENT_CREATE", "INCIDENT_STATUS"].includes(item.type);
 }
 
 export function serializeSyncQueue(queue: SyncOperation[]): string {
